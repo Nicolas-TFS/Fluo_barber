@@ -1,0 +1,305 @@
+Quero criar um aplicativo mobile profissional para gerenciamento de barbearias.
+
+IMPORTANTE: este é o início de um produto real que será utilizado por barbeiros. Não quero apenas um protótipo visual ou algumas telas estáticas. Quero construir uma aplicação funcional, com banco de dados, autenticação e dados persistentes.
+
+## OBJETIVO DO PRODUTO
+
+O aplicativo será instalado no celular do barbeiro e terá como objetivo facilitar a gestão diária da barbearia.
+
+Os três pilares do produto são:
+
+1. SIMPLICIDADE — o barbeiro deve conseguir fazer as tarefas principais em poucos toques.
+2. AUTOMAÇÃO — o sistema deve realizar automaticamente tarefas como controle de disponibilidade dos horários e atualização do financeiro.
+3. DESIGN — o aplicativo precisa ser bonito, moderno e profissional, com identidade visual inspirada em uma barbearia premium.
+
+Não quero um aplicativo com aparência de sistema administrativo antigo ou uma interface genérica.
+
+## PÚBLICO
+
+O usuário principal é o barbeiro ou proprietário de uma pequena barbearia que utiliza principalmente o celular para administrar seu negócio.
+
+Por isso, a experiência deve ser mobile-first e extremamente intuitiva.
+
+## VERSÃO 1
+
+Nesta primeira versão, quero construir as seguintes áreas:
+
+### 1. LOGIN E CADASTRO
+
+O barbeiro poderá:
+
+* criar uma conta;
+* fazer login;
+* recuperar a senha;
+* cadastrar o nome da barbearia;
+* cadastrar seu nome;
+* cadastrar telefone;
+* configurar horário de funcionamento.
+
+Cada barbeiro deve ter seus próprios dados isolados dos demais usuários.
+
+### 2. DASHBOARD
+
+A tela inicial deve mostrar de forma clara:
+
+* faturamento do dia;
+* quantidade de atendimentos;
+* quantidade de clientes;
+* próximo cliente;
+* horário do próximo atendimento;
+* agenda resumida do dia.
+
+Exemplo:
+
+Olá, João 👋
+
+Hoje
+
+Faturamento: R$ 280,00
+Atendimentos: 7
+Clientes: 6
+
+Próximo cliente:
+15:30
+Carlos Silva
+Corte + Barba
+R$ 50,00
+
+Também deve existir um botão para acessar a agenda completa.
+
+### 3. AGENDA
+
+A agenda é uma das funcionalidades principais.
+
+O barbeiro deve conseguir:
+
+* visualizar os horários do dia;
+* visualizar outros dias;
+* criar agendamento manualmente;
+* editar agendamento;
+* cancelar agendamento;
+* remarcar agendamento;
+* bloquear horários;
+* configurar horário de funcionamento.
+
+Os horários disponíveis devem ser calculados automaticamente.
+
+### 4. SISTEMA AUTOMÁTICO DE DISPONIBILIDADE
+
+Esta é uma regra fundamental do aplicativo.
+
+O barbeiro cadastra seus serviços, por exemplo:
+
+Corte
+Duração: 30 minutos
+Preço: R$ 35
+
+Barba
+Duração: 30 minutos
+Preço: R$ 25
+
+Corte + Barba
+Duração: 60 minutos
+Preço: R$ 50
+
+Quando um cliente agenda um serviço, o sistema deve reservar automaticamente o período correspondente.
+
+Exemplo:
+
+Cliente agenda Corte + Barba às 15:00.
+
+O horário de 15:00 até 16:00 fica automaticamente ocupado.
+
+Se outro cliente tentar agendar nesse período, o sistema não pode permitir o agendamento.
+
+A disponibilidade deve ser verificada no servidor/banco de dados no momento da confirmação para evitar que duas pessoas consigam reservar o mesmo horário simultaneamente.
+
+O barbeiro não deve precisar bloquear manualmente horários que os clientes já reservaram.
+
+### 5. CLIENTES
+
+Criar uma área de clientes.
+
+Cada cliente deve possuir:
+
+* nome;
+* telefone;
+* histórico de atendimentos;
+* quantidade de atendimentos;
+* total gasto;
+* último atendimento;
+* preferências de corte;
+* observações.
+
+Exemplo:
+
+Carlos Silva
+
+12 atendimentos
+R$ 480 gastos
+
+Preferências:
+Degradê baixo
+Máquina 1
+Barba curta
+
+Observação:
+Não tirar muito em cima.
+
+O objetivo é permitir que o barbeiro consulte rapidamente as informações antes ou durante o atendimento.
+
+### 6. SERVIÇOS
+
+O barbeiro poderá cadastrar:
+
+* nome do serviço;
+* preço;
+* duração;
+* status ativo/inativo.
+
+Exemplos:
+
+Corte — R$35 — 30 min
+Barba — R$25 — 30 min
+Corte + Barba — R$50 — 60 min
+
+Esses serviços serão utilizados tanto pelo barbeiro quanto pela página de agendamento dos clientes.
+
+### 7. FINANCEIRO
+
+Criar uma área financeira simples e visual.
+
+Mostrar:
+
+* faturamento de hoje;
+* faturamento da semana;
+* faturamento do mês;
+* quantidade de atendimentos;
+* ticket médio.
+
+Também separar os recebimentos por:
+
+* Pix;
+* dinheiro;
+* cartão.
+
+Quando um atendimento for concluído, o barbeiro poderá registrar a forma de pagamento e o valor será contabilizado automaticamente no financeiro.
+
+No futuro poderemos adicionar despesas e lucro, mas a primeira versão deve manter o financeiro simples.
+
+### 8. PÁGINA DE AGENDAMENTO DO CLIENTE
+
+O barbeiro terá um link próprio de agendamento.
+
+O cliente não precisa instalar o aplicativo.
+
+Ele acessará uma página pelo navegador através de um link que poderá ser compartilhado no WhatsApp ou Instagram.
+
+A página deverá mostrar:
+
+* nome da barbearia;
+* serviços;
+* preços;
+* duração;
+* dias disponíveis;
+* horários disponíveis.
+
+O cliente escolhe:
+
+1. serviço;
+2. data;
+3. horário;
+4. nome;
+5. telefone;
+6. confirma o agendamento.
+
+Depois da confirmação, o horário deve aparecer automaticamente na agenda do barbeiro e deixar de estar disponível para outros clientes.
+
+### 9. CONFIGURAÇÕES
+
+O barbeiro poderá configurar:
+
+* nome da barbearia;
+* foto/logo;
+* horário de funcionamento;
+* dias de funcionamento;
+* serviços;
+* preços;
+* duração dos serviços;
+* informações de contato.
+
+## DESIGN
+
+Quero um design premium de barbearia moderna.
+
+Direção visual:
+
+* tema predominantemente escuro;
+* preto/grafite;
+* detalhes sofisticados;
+* tipografia moderna;
+* bastante espaço visual;
+* cards elegantes;
+* ícones minimalistas;
+* animações sutis;
+* excelente experiência em telas de celular.
+
+Evite:
+
+* excesso de dourado;
+* excesso de elementos decorativos;
+* visual antigo;
+* aparência de planilha;
+* excesso de informações na mesma tela;
+* menus complicados.
+
+O aplicativo deve parecer um produto comercial profissional.
+
+A prioridade é:
+
+BONITO + SIMPLES + RÁPIDO.
+
+## ARQUITETURA
+
+Quero uma arquitetura organizada e escalável.
+
+Precisaremos de:
+
+* autenticação;
+* banco de dados;
+* usuários;
+* barbearias;
+* clientes;
+* serviços;
+* agendamentos;
+* pagamentos/recebimentos;
+* configurações de funcionamento.
+
+Cada barbearia deve ter seus dados isolados.
+
+A lógica de disponibilidade dos horários deve ficar no backend/database e não depender apenas da interface do aplicativo.
+
+## IMPORTANTE SOBRE O DESENVOLVIMENTO
+
+Não tente criar todas as funcionalidades de uma vez.
+
+Primeiro:
+
+1. configure a estrutura do projeto;
+2. configure autenticação;
+3. configure banco de dados;
+4. crie a estrutura de navegação;
+5. crie o sistema visual;
+6. depois construiremos cada funcionalidade uma por uma.
+
+Quero que o projeto seja organizado para que possamos continuar desenvolvendo com novos prompts posteriormente.
+
+Antes de implementar funcionalidades complexas, explique brevemente a arquitetura escolhida e quaisquer decisões técnicas importantes.
+
+Não quero código descartável ou apenas uma demonstração visual.
+
+Quero começar construindo a base de um aplicativo mobile real e funcional.
+
+Nome provisório do projeto: BARBER APP.
+
+Comece preparando a estrutura inicial do projeto e me mostre o que foi criado.

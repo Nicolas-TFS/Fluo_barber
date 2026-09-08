@@ -1,6 +1,6 @@
-# [Project name]
+# BARBER APP
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Aplicativo mobile-first para barbeiros organizarem a rotina da barbearia com menos esforço.
 
 ## Run & Operate
 
@@ -22,23 +22,32 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/barber-app/app/` — rotas Expo Router para autenticação, configuração inicial, dashboard, agenda, clientes e configurações.
+- `artifacts/barber-app/contexts/AppContext.tsx` — estado persistido localmente para o bootstrap do produto.
+- `artifacts/barber-app/constants/colors.ts` — tokens visuais da identidade escura do BARBER APP.
+- `artifacts/barber-app/assets/images/icon.png` — ícone da aplicação.
+- `artifacts/api-server/` — API compartilhada preparada para as próximas etapas de persistência no servidor.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Expo Router organiza as telas por grupos de autenticação, configuração inicial e áreas principais.
+- Clerk é o provedor de autenticação; o fluxo nativo usa telas próprias compatíveis com Expo Go.
+- O primeiro bootstrap usa AsyncStorage para manter a configuração da barbearia e os agendamentos entre sessões, sem dados de demonstração.
+- A agenda já possui uma entrada manual funcional e está preparada para migrar a mesma regra de disponibilidade para o backend.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+O produto começa com cadastro/login, configuração da barbearia, dashboard diário, agenda, criação de agendamento, clientes e configurações de serviços/horário. A experiência usa uma linguagem escura, objetiva e premium, com foco em uso rápido no celular.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- O usuário quer um produto real e evolutivo, não uma demonstração visual descartável.
+- A prioridade de experiência é bonito, simples e rápido, evitando aparência de sistema administrativo antigo.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- O fluxo Expo injeta `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` no comando do workflow; não hardcode chaves no código.
+- O preview web mostra o fluxo de autenticação; para validar o comportamento nativo, usar o preview no celular via Expo Go.
 
 ## Pointers
 
