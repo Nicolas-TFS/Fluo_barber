@@ -17,14 +17,19 @@ export type Service = {
   active: boolean;
 };
 
+export type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card';
+
 export type Appointment = {
   id: string;
   clientName: string;
   clientPhone: string;
   serviceId: string;
+  amount: number;
   date: string;
   time: string;
   status: 'scheduled' | 'completed' | 'cancelled';
+  paymentMethod?: PaymentMethod;
+  completedAt?: string;
 };
 
 type StoreData = {
@@ -37,6 +42,7 @@ type AppContextValue = StoreData & {
   ready: boolean;
   saveProfile: (profile: ShopProfile) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
+  completeAppointment: (id: string, paymentMethod: PaymentMethod) => Promise<void>;
 };
 
 const STORAGE_KEY = 'barber-app-store-v1';
@@ -92,8 +98,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const completeAppointment = async (id: string, paymentMethod: PaymentMethod) => {
+    await persist({
+      ...data,
+      appointments: data.appointments.map((appointment) =>
+        appointment.id === id
+          ? { ...appointment, status: 'completed', paymentMethod, completedAt: new Date().toISOString() }
+          : appointment,
+      ),
+    });
+  };
+
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment }),
+    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment }),
     [data, ready],
   );
 
