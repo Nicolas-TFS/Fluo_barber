@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { clerkClient } from "@clerk/express";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, barberAppointments, barberServices, barberShops } from "@workspace/db";
@@ -373,6 +374,55 @@ router.patch("/appointments/:id", requireAuth, async (req, res) => {
     .where(and(eq(barberAppointments.id, appointmentId), eq(barberAppointments.shopId, shop.id)))
     .returning();
   res.json(serializeAppointment(updated[0]));
+});
+
+router.post("/services", requireAuth, async (req, res) => {
+  const body = req.body as { name?: unknown; duration?: unknown; price?: unknown };
+  if (!isText(body.name) || !Number.isInteger(body.duration) || !Number.isInteger(body.price) || (body.duration as number) <= 0 || (body.price as number) < 0) {
+    res.status(400).json({ error: "Invalid service data" });
+    return;
+  }
+
+  const shop = await findShop(res.locals.clerkUserId);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+
+  const inserted = await db
+    .insert(barberServices)
+    .values({
+      id: randomUUID(),
+      shopId: shop.id,
+      name: body.name.trim(),
+      duration: body.duration as number,
+      price: body.price as number,
+      active: true,
+    })
+    .returning();
+  res.status(201).json(inserted[0]);
+});
+
+router.delete("/account", requireAuth, async (req, res) => {
+  const body = req.body as { confirmation?: unknown };
+  if (body.confirmation !== "EXCLUIR") {
+    res.status(400).json({ error: "Deletion confirmation required" });
+    return;
+  }
+
+  const clerkUserId = res.locals.clerkUserId as string;
+  const shop = await findShop(clerkUserId);
+
+  await db.transaction(async (tx) => {
+    if (shop) {
+      await tx.delete(barberAppointments).where(eq(barberAppointments.shopId, shop.id));
+      await tx.delete(barberServices).where(eq(barberServices.shopId, shop.id));
+      await tx.delete(barberShops).where(eq(barberShops.id, shop.id));
+    }
+    await clerkClient.users.deleteUser(clerkUserId);
+  });
+
+  res.json({ success: true });
 });
 
 export default router;

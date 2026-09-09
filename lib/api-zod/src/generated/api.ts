@@ -212,3 +212,33 @@ export const UpdateBarberAppointmentResponse = zod.object({
 })
 
 
+/**
+ * @summary Add a service to the authenticated barbershop
+ */
+export const CreateBarberServiceBody = zod.object({
+  "name": zod.string(),
+  "duration": zod.number().int(),
+  "price": zod.number().int()
+})
+
+export const CreateBarberServiceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "duration": zod.number().int(),
+  "price": zod.number().int(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Permanently delete the authenticated barbershop and Clerk user
+ */
+export const DeleteBarberAccountBody = zod.object({
+  "confirmation": zod.enum(['EXCLUIR'])
+})
+
+export const DeleteBarberAccountResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
