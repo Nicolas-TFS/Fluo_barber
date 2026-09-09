@@ -28,15 +28,21 @@ export default function SetupScreen() {
     try {
       await saveProfile({ shopName: shopName.trim(), ownerName: ownerName.trim(), phone: phone.trim(), openingTime, closingTime });
       router.replace('/(tabs)');
-    } catch (saveError) {
-      setError((saveError as { message?: string }).message || 'Não foi possível salvar sua barbearia no banco. Tente novamente.');
+    } catch {
+      setError('Não foi possível salvar sua barbearia no banco. Tente novamente.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <KeyboardAwareScrollViewCompat contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]} bottomOffset={20}>
+    <KeyboardAwareScrollViewCompat
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]}
+      bottomOffset={72}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+    >
       <BrandMark size={52} />
       <View style={styles.heading}>
         <Text style={[styles.kicker, { color: colors.primary }]}>PRIMEIRO PASSO</Text>
