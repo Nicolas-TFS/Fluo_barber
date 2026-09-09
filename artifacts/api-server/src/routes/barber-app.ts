@@ -175,17 +175,23 @@ router.put("/shop", requireAuth, async (req, res) => {
     });
 
     const services = Array.isArray(body.services) && body.services.every(isService) ? body.services : defaultServices;
+    const serviceIdMap = new Map(services.map((service) => [service.id, randomUUID()]));
     if (services.length > 0) {
-      await tx.insert(barberServices).values(services.map((service) => ({ ...service, shopId })));
+      await tx.insert(barberServices).values(services.map((service) => ({
+        ...service,
+        id: serviceIdMap.get(service.id) as string,
+        shopId,
+      })));
     }
 
     const clients = Array.isArray(body.clients)
       ? body.clients.filter((client): client is BarberClient =>
           isRecord(client) && isText(client.id) && isText(client.name) && typeof client.phone === "string" && isText(client.createdAt))
       : [];
+    const clientIdMap = new Map(clients.map((client) => [client.id, randomUUID()]));
     if (clients.length > 0) {
       await tx.insert(barberClients).values(clients.map((client) => ({
-        id: client.id,
+        id: clientIdMap.get(client.id) as string,
         shopId,
         name: client.name.trim(),
         phone: client.phone.trim(),
@@ -197,12 +203,12 @@ router.put("/shop", requireAuth, async (req, res) => {
     if (appointments.length > 0) {
       await tx.insert(barberAppointments).values(
         appointments.map((appointment) => ({
-          id: appointment.id,
+          id: randomUUID(),
           shopId,
-          clientId: appointment.clientId ?? null,
+          clientId: appointment.clientId ? clientIdMap.get(appointment.clientId) ?? null : null,
           clientName: appointment.clientName,
           clientPhone: appointment.clientPhone,
-          serviceId: appointment.serviceId,
+          serviceId: serviceIdMap.get(appointment.serviceId) ?? appointment.serviceId,
           amount: appointment.amount,
           date: appointment.date,
           time: appointment.time,
