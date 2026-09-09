@@ -8,3 +8,9 @@ Após autenticar, o aplicativo deve considerar o PostgreSQL como fonte obrigató
 **Why:** Um aparelho com cache local podia parecer configurado mesmo quando a criação ou leitura no servidor havia falhado; outro aparelho, sem esse cache, parecia perder a conta ou seus dados.
 
 **How to apply:** Toda entrada de sessão deve buscar o estado remoto pelo identificador Clerk autenticado. Falhas de autenticação ou sincronização devem ser mostradas e permitir nova tentativa; somente uma resposta remota de “não configurado” pode abrir o cadastro inicial.
+
+O carregamento remoto deve depender apenas de mudanças reais de sessão, usuário ou tentativa explícita. Funções retornadas pelos hooks do Clerk, como a obtenção de token, podem mudar de referência entre renderizações e não devem reiniciar diretamente o efeito de sincronização.
+
+**Why:** Usar a referência da função de token como dependência iniciou milhares de consultas repetidas ao perfil remoto, alternando o estado de carregamento e fazendo a tela piscar.
+
+**How to apply:** Manter a função atual em uma referência estável e usá-la dentro da sincronização, sem incluí-la como gatilho do efeito.
