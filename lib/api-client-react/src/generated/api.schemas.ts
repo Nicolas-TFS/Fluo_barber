@@ -25,6 +25,13 @@ export interface BarberService {
   active: boolean;
 }
 
+export interface BarberClient {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+}
+
 export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
 
 
@@ -46,6 +53,7 @@ export const BarberAppointmentStatus = {
 
 export interface BarberAppointment {
   id: string;
+  clientId?: string | null;
   clientName: string;
   clientPhone: string;
   serviceId: string;
@@ -60,16 +68,19 @@ export interface BarberAppointment {
 export interface ShopData {
   profile: BarberProfile;
   services: BarberService[];
+  clients: BarberClient[];
   appointments: BarberAppointment[];
 }
 
 export interface SaveShopRequest {
   profile: BarberProfile;
   services?: BarberService[];
+  clients?: BarberClient[];
   appointments?: BarberAppointment[];
 }
 
 export interface CreateAppointmentRequest {
+  clientId?: string;
   clientName: string;
   clientPhone: string;
   serviceId: string;
@@ -83,6 +94,7 @@ export interface CompleteAppointmentRequest {
 }
 
 export interface UpdateAppointmentRequest {
+  clientId?: string | null;
   clientName?: string;
   clientPhone?: string;
   serviceId?: string;
@@ -96,6 +108,11 @@ export interface CreateServiceRequest {
   name: string;
   duration: number;
   price: number;
+}
+
+export interface CreateClientRequest {
+  name: string;
+  phone: string;
 }
 
 export interface DeleteAccountResponse {

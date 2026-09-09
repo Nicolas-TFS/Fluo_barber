@@ -7,6 +7,7 @@
  */
 
 export interface CreateAppointmentRequest {
+  clientId?: string;
   clientName: string;
   clientPhone: string;
   serviceId: string;

@@ -27,9 +27,18 @@ export const barberServices = pgTable("barber_services", {
   active: boolean("active").notNull().default(true),
 });
 
+export const barberClients = pgTable("barber_clients", {
+  id: text("id").primaryKey(),
+  shopId: text("shop_id").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const barberAppointments = pgTable("barber_appointments", {
   id: text("id").primaryKey(),
   shopId: text("shop_id").notNull(),
+  clientId: text("client_id"),
   clientName: text("client_name").notNull(),
   clientPhone: text("client_phone").notNull().default(""),
   serviceId: text("service_id").notNull(),
@@ -44,4 +53,5 @@ export const barberAppointments = pgTable("barber_appointments", {
 
 export type BarberShop = typeof barberShops.$inferSelect;
 export type BarberService = typeof barberServices.$inferSelect;
+export type BarberClient = typeof barberClients.$inferSelect;
 export type BarberAppointment = typeof barberAppointments.$inferSelect;

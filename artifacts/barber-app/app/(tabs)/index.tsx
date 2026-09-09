@@ -14,7 +14,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
-  const { profile, appointments, services } = useShopStore();
+  const { profile, appointments, services, clients } = useShopStore();
   const today = new Date().toISOString().slice(0, 10);
   const todayAppointments = appointments.filter((item) => item.date === today && item.status !== 'cancelled');
   const nextAppointment = todayAppointments
@@ -32,7 +32,7 @@ export default function DashboardScreen() {
       <View style={styles.statsGrid}>
         <Stat icon="trending-up" label="Faturamento" value={`R$ ${todayRevenue.toFixed(2).replace('.', ',')}`} colors={colors} />
         <Stat icon="calendar" label="Atendimentos" value={String(todayAppointments.length)} colors={colors} />
-        <Stat icon="users" label="Clientes" value="0" colors={colors} />
+        <Stat icon="users" label="Clientes" value={String(clients.length)} colors={colors} />
         <Stat icon="clock" label="Próximo" value={nextAppointment?.time || '—'} colors={colors} />
       </View>
       <View style={styles.sectionHeading}><Text style={[styles.sectionTitle, { color: colors.foreground }]}>Próximo atendimento</Text><Pressable onPress={() => router.push('/(tabs)/agenda')}><Text style={[styles.seeAll, { color: colors.primary }]}>Ver agenda</Text></Pressable></View>

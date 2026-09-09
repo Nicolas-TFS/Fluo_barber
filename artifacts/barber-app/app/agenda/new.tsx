@@ -27,11 +27,12 @@ export default function NewAppointmentScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { services, appointments, addAppointment, updateAppointment } = useShopStore();
+  const { services, clients, appointments, addAppointment, updateAppointment } = useShopStore();
   const existingAppointment = appointments.find((appointment) => appointment.id === id);
   const today = formatDateKey(new Date());
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientId, setClientId] = useState<string | null>();
   const [time, setTime] = useState('09:00');
   const [serviceId, setServiceId] = useState(services[0]?.id || '');
   const [amount, setAmount] = useState(services[0]?.price ? String(services[0].price) : '');
@@ -54,6 +55,7 @@ export default function NewAppointmentScreen() {
     if (!id || !existingAppointment || loadedAppointmentId === id) return;
     setClientName(existingAppointment.clientName);
     setClientPhone(existingAppointment.clientPhone);
+    setClientId(existingAppointment.clientId ?? undefined);
     setTime(existingAppointment.time);
     setServiceId(existingAppointment.serviceId);
     setAmount(String(existingAppointment.amount));
@@ -71,6 +73,7 @@ export default function NewAppointmentScreen() {
     try {
       if (id) {
         await updateAppointment(id, {
+          clientId,
           clientName: clientName.trim(),
           clientPhone: clientPhone.trim(),
           serviceId,
@@ -81,6 +84,7 @@ export default function NewAppointmentScreen() {
         });
       } else {
         await addAppointment({
+          ...(clientId ? { clientId } : {}),
           clientName: clientName.trim(),
           clientPhone: clientPhone.trim(),
           serviceId,
@@ -164,8 +168,32 @@ export default function NewAppointmentScreen() {
           </View>
         </View>
 
-        <Field label="Nome do cliente" value={clientName} onChangeText={setClientName} placeholder="Nome completo" colors={colors} />
-        <Field label="Telefone" value={clientPhone} onChangeText={setClientPhone} placeholder="(11) 99999-9999" keyboardType="phone-pad" colors={colors} />
+        {clients.length > 0 ? (
+          <>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Cliente cadastrado</Text>
+            <View style={styles.clientOptions}>
+              {clients.map((client) => (
+                <Pressable
+                  key={client.id}
+                  onPress={() => {
+                    setClientId(client.id);
+                    setClientName(client.name);
+                    setClientPhone(client.phone);
+                  }}
+                  style={[
+                    styles.clientOption,
+                    { backgroundColor: clientId === client.id ? colors.accent : colors.input, borderColor: clientId === client.id ? colors.primary : colors.border },
+                  ]}
+                >
+                  <Text style={[styles.clientOptionName, { color: colors.foreground }]}>{client.name}</Text>
+                  {client.phone ? <Text style={[styles.clientOptionPhone, { color: colors.mutedForeground }]}>{client.phone}</Text> : null}
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Field label="Nome do cliente" value={clientName} onChangeText={(value) => { setClientId(null); setClientName(value); }} placeholder="Nome completo" colors={colors} />
+        <Field label="Telefone" value={clientPhone} onChangeText={(value) => { setClientId(null); setClientPhone(value); }} placeholder="(11) 99999-9999" keyboardType="phone-pad" colors={colors} />
         <Field label="Horário" value={time} onChangeText={setTime} placeholder="09:00" colors={colors} />
         <Field label="Valor cobrado" value={amount} onChangeText={setAmount} placeholder="35" keyboardType="decimal-pad" colors={colors} />
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Serviço</Text>
@@ -237,6 +265,10 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
   services: { gap: 9, marginTop: -7, marginBottom: 8 },
+  clientOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -7 },
+  clientOption: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, gap: 3 },
+  clientOptionName: { fontSize: 12, fontWeight: '700' },
+  clientOptionPhone: { fontSize: 10 },
   service: { borderWidth: 1, borderRadius: 15, padding: 14, gap: 5 },
   serviceName: { fontSize: 14, fontWeight: '700' },
   serviceMeta: { fontSize: 12 },

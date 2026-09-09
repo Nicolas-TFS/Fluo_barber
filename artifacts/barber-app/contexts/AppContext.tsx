@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import {
   completeBarberAppointment,
   createBarberAppointment,
+  createBarberClient,
   createBarberService,
   deleteBarberAccount,
   getBarberShop,
@@ -28,10 +29,18 @@ export type Service = {
   active: boolean;
 };
 
+export type Client = {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+};
+
 export type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card';
 
 export type Appointment = {
   id: string;
+  clientId?: string | null;
   clientName: string;
   clientPhone: string;
   serviceId: string;
@@ -43,27 +52,29 @@ export type Appointment = {
   completedAt?: string;
 };
 
-export type AppointmentUpdate = Partial<Pick<Appointment, 'clientName' | 'clientPhone' | 'serviceId' | 'amount' | 'date' | 'time' | 'paymentMethod'>>;
+export type AppointmentUpdate = Partial<Pick<Appointment, 'clientId' | 'clientName' | 'clientPhone' | 'serviceId' | 'amount' | 'date' | 'time' | 'paymentMethod'>>;
 
 type StoreData = {
   profile: ShopProfile | null;
   services: Service[];
+  clients: Client[];
   appointments: Appointment[];
 };
 
 type AppContextValue = StoreData & {
   ready: boolean;
   saveProfile: (profile: ShopProfile) => Promise<void>;
-  addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
+  addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'clientId'> & { clientId?: string }) => Promise<void>;
   completeAppointment: (id: string, paymentMethod: PaymentMethod) => Promise<void>;
   updateAppointment: (id: string, update: AppointmentUpdate) => Promise<void>;
   addService: (service: Omit<Service, 'id' | 'active'>) => Promise<void>;
+  addClient: (client: Pick<Client, 'name' | 'phone'>) => Promise<void>;
   deleteAccount: () => Promise<void>;
 };
 
 const STORAGE_KEY = 'barber-app-store-v1';
 const scopedStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
-const emptyStore: StoreData = { profile: null, services: [], appointments: [] };
+const emptyStore: StoreData = { profile: null, services: [], clients: [], appointments: [] };
 const AppContext = createContext<AppContextValue | null>(null);
 
 const starterServices: Service[] = [
@@ -77,6 +88,7 @@ function normalizeStore(value: Partial<StoreData>): StoreData {
   return {
     profile: value.profile ?? null,
     services,
+    clients: Array.isArray(value.clients) ? value.clients : [],
     appointments: Array.isArray(value.appointments)
       ? value.appointments.map((appointment) => ({
           ...appointment,
@@ -100,7 +112,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded: authLoaded, isSignedIn, userId, getToken } = useAuth();
   const [data, setData] = useState<StoreData>(emptyStore);
   const [cacheReady, setCacheReady] = useState(false);
-  const [legacyCache, setLegacyCache] = useState(false);
   const [ready, setReady] = useState(false);
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -115,26 +126,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!isSignedIn || !userId) {
         if (active) {
           setData(emptyStore);
-          setLegacyCache(false);
           setCacheReady(true);
         }
         return;
       }
 
-      const [scopedStored, legacyStored] = await Promise.all([
-        AsyncStorage.getItem(scopedStorageKey(userId)),
-        AsyncStorage.getItem(STORAGE_KEY),
-      ]);
+      const scopedStored = await AsyncStorage.getItem(scopedStorageKey(userId));
+      await AsyncStorage.removeItem(STORAGE_KEY);
       if (!active) return;
       if (scopedStored) {
         setData(normalizeStore(JSON.parse(scopedStored) as Partial<StoreData>));
-        setLegacyCache(false);
-      } else if (legacyStored) {
-        setData(normalizeStore(JSON.parse(legacyStored) as Partial<StoreData>));
-        setLegacyCache(true);
       } else {
         setData(emptyStore);
-        setLegacyCache(false);
       }
       setCacheReady(true);
     };
@@ -142,7 +145,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     void loadCache().catch(() => {
       if (active) {
         setData(emptyStore);
-        setLegacyCache(false);
         setCacheReady(true);
       }
     });
@@ -172,10 +174,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const next = toStoreData(remote);
           setData(next);
           void AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
-          if (legacyCache) {
-            await AsyncStorage.removeItem(STORAGE_KEY);
-            setLegacyCache(false);
-          }
         }
       } catch (error) {
         const status = (error as { status?: number }).status;
@@ -185,16 +183,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const remote = await saveBarberShop({
             profile: localData.profile,
             services,
+            clients: localData.clients,
             appointments: localData.appointments,
           });
           if (active) {
             const next = toStoreData(remote);
             setData(next);
             void AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
-            if (legacyCache) {
-              await AsyncStorage.removeItem(STORAGE_KEY);
-              setLegacyCache(false);
-            }
           }
         }
       } finally {
@@ -205,7 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [authLoaded, cacheReady, isSignedIn, userId, legacyCache]);
+  }, [authLoaded, cacheReady, isSignedIn, userId]);
 
   const persistCache = async (next: StoreData) => {
     setData(next);
@@ -217,11 +212,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       data.services.length > 0
         ? data.services
         : starterServices;
-    const remote = await saveBarberShop({ profile, services, appointments: data.appointments });
+    const remote = await saveBarberShop({ profile, services, clients: data.clients, appointments: data.appointments });
     await persistCache(toStoreData(remote));
   };
 
-  const addAppointment = async (appointment: Omit<Appointment, 'id' | 'status'>) => {
+  const addAppointment = async (appointment: Omit<Appointment, 'id' | 'status' | 'clientId'> & { clientId?: string }) => {
     const created = await createBarberAppointment(appointment);
     await persistCache({
       ...data,
@@ -252,6 +247,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await persistCache({ ...data, services: [...data.services, created] });
   };
 
+  const addClient = async (client: Pick<Client, 'name' | 'phone'>) => {
+    await createBarberClient(client);
+    const remote = await getBarberShop();
+    await persistCache(toStoreData(remote));
+  };
+
   const deleteAccount = async () => {
     await deleteBarberAccount({ confirmation: 'EXCLUIR' });
     if (userId) {
@@ -264,7 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, deleteAccount }),
+    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, addClient, deleteAccount }),
     [data, ready],
   );
 
