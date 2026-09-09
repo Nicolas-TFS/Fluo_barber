@@ -27,7 +27,7 @@ export default function NewAppointmentScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { services, clients, appointments, addAppointment, updateAppointment } = useShopStore();
+  const { profile, services, clients, appointments, addAppointment, updateAppointment } = useShopStore();
   const existingAppointment = appointments.find((appointment) => appointment.id === id);
   const today = formatDateKey(new Date());
   const [clientName, setClientName] = useState('');
@@ -43,6 +43,8 @@ export default function NewAppointmentScreen() {
   const [saving, setSaving] = useState(false);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
+  const [showAvailableTimes, setShowAvailableTimes] = useState(false);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedClient = clients.find((client) => client.id === clientId);
@@ -50,6 +52,29 @@ export default function NewAppointmentScreen() {
     const query = clientSearch.trim().toLocaleLowerCase('pt-BR');
     return !query || client.name.toLocaleLowerCase('pt-BR').includes(query) || client.phone.includes(query);
   });
+  const availableTimes = useMemo(() => {
+    const toMinutes = (value: string) => {
+      const [hours, minutes] = value.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    const toTime = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+    const opening = toMinutes(profile?.openingTime || '09:00');
+    const closing = toMinutes(profile?.closingTime || '18:00');
+    const occupied = new Set(
+      appointments
+        .filter((appointment) =>
+          appointment.id !== id &&
+          appointment.date === selectedDate &&
+          appointment.status === 'scheduled')
+        .map((appointment) => appointment.time),
+    );
+    const result: string[] = [];
+    for (let minutes = opening; minutes < closing; minutes += 30) {
+      const candidate = toTime(minutes);
+      if (!occupied.has(candidate)) result.push(candidate);
+    }
+    return result;
+  }, [appointments, id, profile?.closingTime, profile?.openingTime, selectedDate]);
   const calendarDays = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -77,6 +102,8 @@ export default function NewAppointmentScreen() {
     const normalizedAmount = Number(amount.replace(',', '.'));
     if (!Number.isFinite(normalizedAmount) || normalizedAmount < 0) return;
     setSaving(true);
+    setScheduleError('');
+    setShowAvailableTimes(false);
     try {
       if (id) {
         await updateAppointment(id, {
@@ -101,6 +128,13 @@ export default function NewAppointmentScreen() {
         });
       }
       router.back();
+    } catch (error) {
+      if ((error as { status?: number }).status === 409) {
+        setScheduleError(`O horário ${time} não está disponível nessa data.`);
+        setShowAvailableTimes(true);
+      } else {
+        setScheduleError('Não foi possível salvar o agendamento. Tente novamente.');
+      }
     } finally {
       setSaving(false);
     }
@@ -163,7 +197,11 @@ export default function NewAppointmentScreen() {
                   key={dateKey}
                   accessibilityRole="button"
                   accessibilityLabel={`Selecionar dia ${day}`}
-                  onPress={() => setSelectedDate(dateKey)}
+                  onPress={() => {
+                    setSelectedDate(dateKey);
+                    setScheduleError('');
+                    setShowAvailableTimes(false);
+                  }}
                   style={[styles.calendarDay, selected && { backgroundColor: colors.primary }]}
                 >
                   <Text style={[styles.dayText, { color: selected ? colors.primaryForeground : colors.foreground }, isToday && !selected && { color: colors.primary, fontWeight: '800' }]}>
@@ -195,7 +233,35 @@ export default function NewAppointmentScreen() {
         </Pressable>
         <Field label="Nome do cliente" value={clientName} onChangeText={(value) => { setClientId(null); setClientName(value); }} placeholder="Nome completo" colors={colors} />
         <Field label="Telefone" value={clientPhone} onChangeText={(value) => { setClientId(null); setClientPhone(value); }} placeholder="(11) 99999-9999" keyboardType="phone-pad" colors={colors} />
-        <Field label="Horário" value={time} onChangeText={setTime} placeholder="09:00" colors={colors} />
+        <Field label="Horário" value={time} onChangeText={(value) => { setTime(value); setScheduleError(''); setShowAvailableTimes(false); }} placeholder="09:00" colors={colors} />
+        {scheduleError ? (
+          <View style={[styles.availabilityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.availabilityTitleRow}>
+              <Feather name="alert-circle" size={17} color={colors.destructive} />
+              <Text style={[styles.availabilityError, { color: colors.destructive }]}>{scheduleError}</Text>
+            </View>
+            {showAvailableTimes ? <Text style={[styles.availabilityLabel, { color: colors.foreground }]}>Horários disponíveis</Text> : null}
+            {showAvailableTimes && availableTimes.length > 0 ? (
+              <View style={styles.availableTimes}>
+                {availableTimes.map((availableTime) => (
+                  <Pressable
+                    key={availableTime}
+                    onPress={() => {
+                      setTime(availableTime);
+                      setScheduleError('');
+                      setShowAvailableTimes(false);
+                    }}
+                    style={[styles.availableTime, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.availableTimeText, { color: colors.foreground }]}>{availableTime}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : showAvailableTimes ? (
+              <Text style={[styles.noAvailableTimes, { color: colors.mutedForeground }]}>Não há horários livres nessa data.</Text>
+            ) : null}
+          </View>
+        ) : null}
         <Field label="Valor cobrado" value={amount} onChangeText={setAmount} placeholder="35" keyboardType="decimal-pad" colors={colors} />
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Serviço</Text>
         <View style={styles.services}>
@@ -320,6 +386,14 @@ const styles = StyleSheet.create({
   dayText: { fontSize: 13, fontWeight: '600' },
   field: { gap: 8 },
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
+  availabilityCard: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 12 },
+  availabilityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  availabilityError: { flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  availabilityLabel: { fontSize: 13, fontWeight: '700' },
+  availableTimes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  availableTime: { borderWidth: 1, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9 },
+  availableTimeText: { fontSize: 12, fontWeight: '700' },
+  noAvailableTimes: { fontSize: 12 },
   services: { gap: 9, marginTop: -7, marginBottom: 8 },
   clientSelector: { minHeight: 62, borderWidth: 1, borderRadius: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -7 },
   clientSelectorInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
