@@ -489,6 +489,71 @@ router.post("/clients", requireAuth, async (req, res) => {
   res.status(201).json({ ...inserted[0], createdAt: inserted[0].createdAt.toISOString() });
 });
 
+router.patch("/clients/:id", requireAuth, async (req, res) => {
+  const body = req.body as { name?: unknown; phone?: unknown };
+  if (!isText(body.name) || typeof body.phone !== "string") {
+    res.status(400).json({ error: "Invalid client data" });
+    return;
+  }
+  const shop = await findShop(res.locals.clerkUserId);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+  const clientId = String(req.params.id);
+  const clientName = body.name.trim();
+  const clientPhone = body.phone.trim();
+  const updated = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(barberClients)
+      .set({ name: clientName, phone: clientPhone })
+      .where(and(eq(barberClients.id, clientId), eq(barberClients.shopId, shop.id)))
+      .returning();
+    if (!rows[0]) return null;
+    await tx
+      .update(barberAppointments)
+      .set({ clientName, clientPhone })
+      .where(and(eq(barberAppointments.clientId, clientId), eq(barberAppointments.shopId, shop.id)));
+    return rows[0];
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Client not found" });
+    return;
+  }
+  res.json({ ...updated, createdAt: updated.createdAt.toISOString() });
+});
+
+router.delete("/clients/:id", requireAuth, async (req, res) => {
+  const shop = await findShop(res.locals.clerkUserId);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+  const clientId = String(req.params.id);
+  const deleted = await db.transaction(async (tx) => {
+    const client = await tx
+      .select({ id: barberClients.id })
+      .from(barberClients)
+      .where(and(eq(barberClients.id, clientId), eq(barberClients.shopId, shop.id)))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!client) return false;
+    await tx
+      .update(barberAppointments)
+      .set({ clientId: null })
+      .where(and(eq(barberAppointments.clientId, clientId), eq(barberAppointments.shopId, shop.id)));
+    await tx
+      .delete(barberClients)
+      .where(and(eq(barberClients.id, clientId), eq(barberClients.shopId, shop.id)));
+    return true;
+  });
+  if (!deleted) {
+    res.status(404).json({ error: "Client not found" });
+    return;
+  }
+  res.json({ success: true });
+});
+
 router.delete("/account", requireAuth, async (req, res) => {
   const body = req.body as { confirmation?: unknown };
   if (body.confirmation !== "EXCLUIR") {

@@ -5,7 +5,7 @@ import { Appointment, PaymentMethod, useShopStore } from '@/contexts/AppContext'
 import { useColors } from '@/hooks/useColors';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -41,8 +41,15 @@ export default function NewAppointmentScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>();
   const [loadedAppointmentId, setLoadedAppointmentId] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
 
   const selectedService = services.find((service) => service.id === serviceId);
+  const selectedClient = clients.find((client) => client.id === clientId);
+  const filteredClients = clients.filter((client) => {
+    const query = clientSearch.trim().toLocaleLowerCase('pt-BR');
+    return !query || client.name.toLocaleLowerCase('pt-BR').includes(query) || client.phone.includes(query);
+  });
   const calendarDays = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -168,30 +175,24 @@ export default function NewAppointmentScreen() {
           </View>
         </View>
 
-        {clients.length > 0 ? (
-          <>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Cliente cadastrado</Text>
-            <View style={styles.clientOptions}>
-              {clients.map((client) => (
-                <Pressable
-                  key={client.id}
-                  onPress={() => {
-                    setClientId(client.id);
-                    setClientName(client.name);
-                    setClientPhone(client.phone);
-                  }}
-                  style={[
-                    styles.clientOption,
-                    { backgroundColor: clientId === client.id ? colors.accent : colors.input, borderColor: clientId === client.id ? colors.primary : colors.border },
-                  ]}
-                >
-                  <Text style={[styles.clientOptionName, { color: colors.foreground }]}>{client.name}</Text>
-                  {client.phone ? <Text style={[styles.clientOptionPhone, { color: colors.mutedForeground }]}>{client.phone}</Text> : null}
-                </Pressable>
-              ))}
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Cliente cadastrado</Text>
+        <Pressable
+          onPress={() => setClientPickerOpen(true)}
+          style={[styles.clientSelector, { backgroundColor: colors.input, borderColor: clientId ? colors.primary : colors.border }]}
+        >
+          <View style={styles.clientSelectorInfo}>
+            <Feather name="user" size={17} color={colors.primary} />
+            <View style={styles.clientSelectorText}>
+              <Text style={[styles.clientSelectorTitle, { color: colors.foreground }]}>
+                {selectedClient?.name || 'Selecionar cliente'}
+              </Text>
+              <Text style={[styles.clientSelectorMeta, { color: colors.mutedForeground }]}>
+                {selectedClient?.phone || (clients.length > 0 ? 'Toque para buscar na lista' : 'Nenhum cliente cadastrado')}
+              </Text>
             </View>
-          </>
-        ) : null}
+          </View>
+          <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+        </Pressable>
         <Field label="Nome do cliente" value={clientName} onChangeText={(value) => { setClientId(null); setClientName(value); }} placeholder="Nome completo" colors={colors} />
         <Field label="Telefone" value={clientPhone} onChangeText={(value) => { setClientId(null); setClientPhone(value); }} placeholder="(11) 99999-9999" keyboardType="phone-pad" colors={colors} />
         <Field label="Horário" value={time} onChangeText={setTime} placeholder="09:00" colors={colors} />
@@ -233,6 +234,61 @@ export default function NewAppointmentScreen() {
         ) : null}
         <PrimaryButton label={id ? 'Salvar alterações' : 'Salvar agendamento'} onPress={save} disabled={!clientName.trim() || !serviceId || !amount} loading={saving} />
       </KeyboardAwareScrollViewCompat>
+      <Modal visible={clientPickerOpen} transparent animationType="slide" onRequestClose={() => setClientPickerOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.clientModal, { backgroundColor: colors.card, paddingBottom: insets.bottom + 18 }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Selecionar cliente</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Escolha um cadastro para vincular ao controle.</Text>
+              </View>
+              <Pressable onPress={() => setClientPickerOpen(false)} style={[styles.closeButton, { backgroundColor: colors.secondary }]}>
+                <Feather name="x" size={18} color={colors.foreground} />
+              </Pressable>
+            </View>
+            <View style={[styles.clientSearch, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <Feather name="search" size={17} color={colors.mutedForeground} />
+              <TextInput
+                value={clientSearch}
+                onChangeText={setClientSearch}
+                placeholder="Buscar por nome ou telefone"
+                placeholderTextColor={colors.mutedForeground}
+                autoFocus
+                style={[styles.clientSearchInput, { color: colors.foreground }]}
+              />
+            </View>
+            <ScrollView style={styles.clientList} keyboardShouldPersistTaps="handled">
+              {filteredClients.length === 0 ? (
+                <Text style={[styles.noClients, { color: colors.mutedForeground }]}>
+                  {clients.length === 0 ? 'Cadastre um cliente na tela Clientes.' : 'Nenhum cliente encontrado.'}
+                </Text>
+              ) : filteredClients.map((client) => (
+                <Pressable
+                  key={client.id}
+                  onPress={() => {
+                    setClientId(client.id);
+                    setClientName(client.name);
+                    setClientPhone(client.phone);
+                    setClientSearch('');
+                    setClientPickerOpen(false);
+                  }}
+                  style={[styles.clientRow, { borderBottomColor: colors.border }]}
+                >
+                  <View style={[styles.clientAvatar, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.clientAvatarText, { color: colors.primary }]}>{client.name.slice(0, 1).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.clientRowInfo}>
+                    <Text style={[styles.clientRowName, { color: colors.foreground }]}>{client.name}</Text>
+                    <Text style={[styles.clientRowPhone, { color: colors.mutedForeground }]}>{client.phone || 'Sem telefone'}</Text>
+                  </View>
+                  {clientId === client.id ? <Feather name="check" size={18} color={colors.primary} /> : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -265,10 +321,28 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
   services: { gap: 9, marginTop: -7, marginBottom: 8 },
-  clientOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -7 },
-  clientOption: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, gap: 3 },
-  clientOptionName: { fontSize: 12, fontWeight: '700' },
-  clientOptionPhone: { fontSize: 10 },
+  clientSelector: { minHeight: 62, borderWidth: 1, borderRadius: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -7 },
+  clientSelectorInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  clientSelectorText: { flex: 1, gap: 4 },
+  clientSelectorTitle: { fontSize: 14, fontWeight: '700' },
+  clientSelectorMeta: { fontSize: 11 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' },
+  clientModal: { maxHeight: '78%', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 10 },
+  modalHandle: { width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(150,150,150,0.45)', alignSelf: 'center', marginBottom: 18 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '700' },
+  modalSubtitle: { fontSize: 12, marginTop: 5 },
+  closeButton: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  clientSearch: { minHeight: 48, borderWidth: 1, borderRadius: 14, marginTop: 18, marginBottom: 8, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  clientSearchInput: { flex: 1, fontSize: 14, paddingVertical: 11 },
+  clientList: { minHeight: 100 },
+  noClients: { textAlign: 'center', fontSize: 13, paddingVertical: 34 },
+  clientRow: { minHeight: 68, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  clientAvatar: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  clientAvatarText: { fontSize: 15, fontWeight: '700' },
+  clientRowInfo: { flex: 1, gap: 4 },
+  clientRowName: { fontSize: 14, fontWeight: '700' },
+  clientRowPhone: { fontSize: 11 },
   service: { borderWidth: 1, borderRadius: 15, padding: 14, gap: 5 },
   serviceName: { fontSize: 14, fontWeight: '700' },
   serviceMeta: { fontSize: 12 },

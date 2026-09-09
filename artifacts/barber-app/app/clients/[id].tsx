@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { useShopStore } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
 
@@ -14,9 +15,16 @@ function monthKey(date: Date) {
 export default function ClientDetailsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { clients, appointments, services } = useShopStore();
+  const { clients, appointments, services, updateClient, deleteClient } = useShopStore();
   const [month, setMonth] = useState(() => new Date());
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
   const client = clients.find((item) => item.id === id);
   const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(month);
 
@@ -45,6 +53,48 @@ export default function ClientDetailsScreen() {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   };
 
+  const openEdit = () => {
+    setEditName(client.name);
+    setEditPhone(client.phone);
+    setError('');
+    setEditOpen(true);
+  };
+
+  const saveClient = async () => {
+    if (!editName.trim() || saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      await updateClient(client.id, { name: editName.trim(), phone: editPhone.trim() });
+      setEditOpen(false);
+    } catch {
+      setError('Não foi possível atualizar o cliente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Excluir cliente?',
+      'O cadastro será removido. Os atendimentos continuam na agenda e no financeiro, mas deixam de aparecer no controle deste cliente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            setDeleting(true);
+            void deleteClient(client.id)
+              .then(() => router.back())
+              .catch(() => Alert.alert('Não foi possível excluir', 'Tente novamente.'))
+              .finally(() => setDeleting(false));
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ title: client.name, headerShown: true, headerTintColor: colors.foreground, headerStyle: { backgroundColor: colors.background }, headerTitleStyle: { color: colors.foreground } }} />
@@ -57,7 +107,14 @@ export default function ClientDetailsScreen() {
             <Text style={[styles.name, { color: colors.foreground }]}>{client.name}</Text>
             <Text style={[styles.phone, { color: colors.mutedForeground }]}>{client.phone || 'Telefone não informado'}</Text>
           </View>
+          <Pressable onPress={openEdit} style={[styles.editButton, { backgroundColor: colors.secondary }]}>
+            <Feather name="edit-2" size={16} color={colors.foreground} />
+          </Pressable>
         </View>
+        <Pressable disabled={deleting} onPress={confirmDelete} style={styles.deleteButton}>
+          <Feather name="trash-2" size={15} color={colors.destructive} />
+          <Text style={[styles.deleteText, { color: colors.destructive }]}>{deleting ? 'Excluindo...' : 'Excluir cliente'}</Text>
+        </Pressable>
 
         <View style={styles.monthHeader}>
           <Pressable onPress={() => changeMonth(-1)} style={[styles.monthButton, { backgroundColor: colors.secondary }]}>
@@ -107,6 +164,28 @@ export default function ClientDetailsScreen() {
           </View>
         )}
       </ScrollView>
+      <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.editModal, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Editar cliente</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>As alterações também atualizam os atendimentos vinculados.</Text>
+              </View>
+              <Pressable onPress={() => setEditOpen(false)} style={[styles.closeButton, { backgroundColor: colors.secondary }]}>
+                <Feather name="x" size={18} color={colors.foreground} />
+              </Pressable>
+            </View>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Nome</Text>
+            <TextInput value={editName} onChangeText={setEditName} autoCapitalize="words" placeholder="Nome completo" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]} />
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Telefone</Text>
+            <TextInput value={editPhone} onChangeText={setEditPhone} keyboardType="phone-pad" placeholder="(11) 99999-9999" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]} />
+            {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+            <PrimaryButton label="Salvar alterações" onPress={() => void saveClient()} disabled={!editName.trim()} loading={saving} />
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -118,8 +197,11 @@ const styles = StyleSheet.create({
   avatar: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 20, fontWeight: '700' },
   profileInfo: { flex: 1, gap: 5 },
+  editButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 18, fontWeight: '700' },
   phone: { fontSize: 13 },
+  deleteButton: { alignSelf: 'flex-end', marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7 },
+  deleteText: { fontSize: 12, fontWeight: '700' },
   monthHeader: { marginTop: 26, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   monthButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   monthLabel: { fontSize: 15, fontWeight: '700', textTransform: 'capitalize' },
@@ -136,4 +218,14 @@ const styles = StyleSheet.create({
   visitValue: { alignItems: 'flex-end', gap: 6 },
   amount: { fontSize: 13, fontWeight: '700' },
   status: { fontSize: 11, fontWeight: '600' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' },
+  editModal: { borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 10, gap: 12 },
+  modalHandle: { width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(150,150,150,0.45)', alignSelf: 'center', marginBottom: 8 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 5 },
+  modalTitle: { fontSize: 20, fontWeight: '700' },
+  modalSubtitle: { fontSize: 12, lineHeight: 17, marginTop: 5, maxWidth: 280 },
+  closeButton: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', marginTop: 3 },
+  input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
+  error: { fontSize: 12 },
 });

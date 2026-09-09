@@ -115,6 +115,15 @@ export interface CreateClientRequest {
   phone: string;
 }
 
+export interface UpdateClientRequest {
+  name: string;
+  phone: string;
+}
+
+export interface DeleteClientResponse {
+  success: boolean;
+}
+
 export interface DeleteAccountResponse {
   success: boolean;
 }
