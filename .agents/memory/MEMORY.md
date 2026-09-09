@@ -1,0 +1,1 @@
+- [Clerk environments](clerk-environments.md) — preview e app publicado usam ambientes Clerk separados; dados compartilhados exigem backend por usuário dentro do mesmo ambiente.

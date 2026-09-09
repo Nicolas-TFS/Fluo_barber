@@ -1,5 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/expo';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  completeBarberAppointment,
+  createBarberAppointment,
+  getBarberShop,
+  saveBarberShop,
+  setAuthTokenGetter,
+} from '@workspace/api-client-react';
 
 export type ShopProfile = {
   shopName: string;
@@ -46,66 +54,178 @@ type AppContextValue = StoreData & {
 };
 
 const STORAGE_KEY = 'barber-app-store-v1';
+const scopedStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
+const emptyStore: StoreData = { profile: null, services: [], appointments: [] };
 const AppContext = createContext<AppContextValue | null>(null);
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<StoreData>({
-    profile: null,
-    services: [],
-    appointments: [],
+const starterServices: Service[] = [
+  { id: 'service-cut', name: 'Corte', duration: 30, price: 35, active: true },
+  { id: 'service-beard', name: 'Barba', duration: 30, price: 25, active: true },
+  { id: 'service-combo', name: 'Corte + Barba', duration: 60, price: 50, active: true },
+];
+
+function normalizeStore(value: Partial<StoreData>): StoreData {
+  const services = Array.isArray(value.services) ? value.services : [];
+  return {
+    profile: value.profile ?? null,
+    services,
+    appointments: Array.isArray(value.appointments)
+      ? value.appointments.map((appointment) => ({
+          ...appointment,
+          amount: appointment.amount || services.find((service) => service.id === appointment.serviceId)?.price || 0,
+        })) as Appointment[]
+      : [],
+  };
+}
+
+function toStoreData(remote: Awaited<ReturnType<typeof getBarberShop>>): StoreData {
+  return normalizeStore({
+    ...remote,
+    appointments: remote.appointments.map((appointment) => ({
+      ...appointment,
+      completedAt: appointment.completedAt ?? undefined,
+    })),
   });
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { isLoaded: authLoaded, isSignedIn, userId, getToken } = useAuth();
+  const [data, setData] = useState<StoreData>(emptyStore);
+  const [cacheReady, setCacheReady] = useState(false);
+  const [legacyCache, setLegacyCache] = useState(false);
   const [ready, setReady] = useState(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((stored) => {
-        if (stored) {
-          setData(JSON.parse(stored) as StoreData);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => setReady(true));
-  }, []);
+    if (!authLoaded) return;
+    let active = true;
+    setReady(false);
+    setCacheReady(false);
 
-  const persist = async (next: StoreData) => {
+    const loadCache = async () => {
+      if (!isSignedIn || !userId) {
+        if (active) {
+          setData(emptyStore);
+          setLegacyCache(false);
+          setCacheReady(true);
+        }
+        return;
+      }
+
+      const [scopedStored, legacyStored] = await Promise.all([
+        AsyncStorage.getItem(scopedStorageKey(userId)),
+        AsyncStorage.getItem(STORAGE_KEY),
+      ]);
+      if (!active) return;
+      if (scopedStored) {
+        setData(normalizeStore(JSON.parse(scopedStored) as Partial<StoreData>));
+        setLegacyCache(false);
+      } else if (legacyStored) {
+        setData(normalizeStore(JSON.parse(legacyStored) as Partial<StoreData>));
+        setLegacyCache(true);
+      } else {
+        setData(emptyStore);
+        setLegacyCache(false);
+      }
+      setCacheReady(true);
+    };
+
+    void loadCache().catch(() => {
+      if (active) {
+        setData(emptyStore);
+        setLegacyCache(false);
+        setCacheReady(true);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [authLoaded, isSignedIn, userId]);
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => setAuthTokenGetter(null);
+  }, [getToken]);
+
+  useEffect(() => {
+    if (!cacheReady || !authLoaded) return;
+    if (!isSignedIn || !userId) {
+      setReady(true);
+      return;
+    }
+
+    let active = true;
+    const sync = async () => {
+      try {
+        const remote = await getBarberShop();
+        if (active) {
+          const next = toStoreData(remote);
+          setData(next);
+          void AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
+          if (legacyCache) {
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            setLegacyCache(false);
+          }
+        }
+      } catch (error) {
+        const status = (error as { status?: number }).status;
+        const localData = dataRef.current;
+        if (status === 404 && localData.profile) {
+          const services = localData.services.length > 0 ? localData.services : starterServices;
+          const remote = await saveBarberShop({
+            profile: localData.profile,
+            services,
+            appointments: localData.appointments,
+          });
+          if (active) {
+            const next = toStoreData(remote);
+            setData(next);
+            void AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
+            if (legacyCache) {
+              await AsyncStorage.removeItem(STORAGE_KEY);
+              setLegacyCache(false);
+            }
+          }
+        }
+      } finally {
+        if (active) setReady(true);
+      }
+    };
+    void sync();
+    return () => {
+      active = false;
+    };
+  }, [authLoaded, cacheReady, isSignedIn, userId, legacyCache]);
+
+  const persistCache = async (next: StoreData) => {
     setData(next);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (userId) await AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
   };
 
   const saveProfile = async (profile: ShopProfile) => {
     const services =
       data.services.length > 0
         ? data.services
-        : [
-            { id: 'service-cut', name: 'Corte', duration: 30, price: 35, active: true },
-            { id: 'service-beard', name: 'Barba', duration: 30, price: 25, active: true },
-            { id: 'service-combo', name: 'Corte + Barba', duration: 60, price: 50, active: true },
-          ];
-    await persist({ ...data, profile, services });
+        : starterServices;
+    const remote = await saveBarberShop({ profile, services, appointments: data.appointments });
+    await persistCache(toStoreData(remote));
   };
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'status'>) => {
-    await persist({
+    const created = await createBarberAppointment(appointment);
+    await persistCache({
       ...data,
-      appointments: [
-        ...data.appointments,
-        {
-          ...appointment,
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          status: 'scheduled',
-        },
-      ],
+      appointments: [...data.appointments, { ...created, completedAt: created.completedAt ?? undefined }],
     });
   };
 
   const completeAppointment = async (id: string, paymentMethod: PaymentMethod) => {
-    await persist({
+    const completed = await completeBarberAppointment(id, { paymentMethod });
+    await persistCache({
       ...data,
-      appointments: data.appointments.map((appointment) =>
-        appointment.id === id
-          ? { ...appointment, status: 'completed', paymentMethod, completedAt: new Date().toISOString() }
-          : appointment,
-      ),
+      appointments: data.appointments.map((appointment) => appointment.id === id ? { ...completed, completedAt: completed.completedAt ?? undefined } : appointment),
     });
   };
 

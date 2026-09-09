@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: barber-app
+    description: Shared Barber App data
 paths:
   /healthz:
     get:
@@ -24,6 +26,108 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /shop:
+    get:
+      operationId: getBarberShop
+      tags: [barber-app]
+      summary: Load the authenticated barbershop
+      responses:
+        "200":
+          description: Barbershop data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopData"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Barbershop not configured
+    put:
+      operationId: saveBarberShop
+      tags: [barber-app]
+      summary: Save the authenticated barbershop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveShopRequest"
+      responses:
+        "200":
+          description: Saved barbershop data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopData"
+        "400":
+          description: Invalid barbershop data
+        "401":
+          description: Unauthorized
+  /appointments:
+    get:
+      operationId: getBarberAppointments
+      tags: [barber-app]
+      summary: List the authenticated barbershop appointments
+      responses:
+        "200":
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BarberAppointment"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createBarberAppointment
+      tags: [barber-app]
+      summary: Create an appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentRequest"
+      responses:
+        "201":
+          description: Created appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "400":
+          description: Invalid appointment data
+        "401":
+          description: Unauthorized
+  /appointments/{id}/complete:
+    post:
+      operationId: completeBarberAppointment
+      tags: [barber-app]
+      summary: Complete an appointment with its payment method
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteAppointmentRequest"
+      responses:
+        "200":
+          description: Completed appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Appointment not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +137,111 @@ components:
           type: string
       required:
         - status
+    BarberProfile:
+      type: object
+      properties:
+        shopName:
+          type: string
+        ownerName:
+          type: string
+        phone:
+          type: string
+        openingTime:
+          type: string
+        closingTime:
+          type: string
+      required: [shopName, ownerName, phone, openingTime, closingTime]
+    BarberService:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: integer
+        active:
+          type: boolean
+      required: [id, name, duration, price, active]
+    PaymentMethod:
+      type: string
+      enum: [pix, cash, credit_card, debit_card]
+    BarberAppointment:
+      type: object
+      properties:
+        id:
+          type: string
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        completedAt:
+          type: string
+          nullable: true
+      required: [id, clientName, clientPhone, serviceId, amount, date, time, status]
+    ShopData:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BarberProfile"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberAppointment"
+      required: [profile, services, appointments]
+    SaveShopRequest:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BarberProfile"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberAppointment"
+      required: [profile]
+    CreateAppointmentRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+      required: [clientName, clientPhone, serviceId, amount, date, time]
+    CompleteAppointmentRequest:
+      type: object
+      properties:
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+      required: [paymentMethod]
 
