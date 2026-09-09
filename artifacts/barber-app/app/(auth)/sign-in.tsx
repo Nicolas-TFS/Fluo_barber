@@ -1,10 +1,11 @@
 import { BrandMark } from '@/components/BrandMark';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { useColors } from '@/hooks/useColors';
 import { useSignIn } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
@@ -17,6 +18,7 @@ export default function SignInScreen() {
   const [error, setError] = useState('');
 
   const submit = async () => {
+    Keyboard.dismiss();
     setError('');
     try {
       const result = await signIn.password({ emailAddress: email.trim().toLowerCase(), password });
@@ -39,7 +41,13 @@ export default function SignInScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 34, paddingBottom: insets.bottom + 20 }]}>
+    <KeyboardAwareScrollViewCompat
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 34, paddingBottom: insets.bottom + 20 }]}
+      bottomOffset={72}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.brand}><BrandMark size={56} /><Text style={[styles.brandName, { color: colors.foreground }]}>BARBER APP</Text></View>
       <View style={styles.heading}><Text style={[styles.title, { color: colors.foreground }]}>Sua barbearia, no ritmo certo.</Text><Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Entre para acompanhar sua agenda e o seu dia.</Text></View>
       <View style={styles.form}>
@@ -49,7 +57,7 @@ export default function SignInScreen() {
         <PrimaryButton label="Entrar" onPress={submit} disabled={!email || !password} loading={fetchStatus === 'fetching'} />
       </View>
       <View style={styles.footer}><Text style={[styles.footerText, { color: colors.mutedForeground }]}>Ainda não tem uma conta?</Text><Pressable onPress={() => router.push('/(auth)/sign-up')}><Text style={[styles.link, { color: colors.primary }]}>Criar agora</Text></Pressable></View>
-    </View>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 
@@ -58,7 +66,8 @@ function Field({ label, colors, ...props }: { label: string; colors: ReturnType<
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 22, justifyContent: 'space-between' },
+  container: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: 22, justifyContent: 'space-between' },
   brand: { gap: 14, alignItems: 'flex-start' },
   brandName: { fontSize: 12, fontWeight: '700', letterSpacing: 2.8 },
   heading: { gap: 10 },

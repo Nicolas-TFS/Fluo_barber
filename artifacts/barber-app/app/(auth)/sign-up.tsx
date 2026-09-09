@@ -1,10 +1,11 @@
 import { BrandMark } from '@/components/BrandMark';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { useColors } from '@/hooks/useColors';
 import { useSignUp } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignUpScreen() {
@@ -22,6 +23,7 @@ export default function SignUpScreen() {
   const verifying = verificationSent && signUp.status === 'missing_requirements' && signUp.unverifiedFields.includes('email_address');
 
   const submit = async () => {
+    Keyboard.dismiss();
     setError('');
     setInfo('');
     if (password.length < 8) {
@@ -51,6 +53,7 @@ export default function SignUpScreen() {
   };
 
   const verify = async () => {
+    Keyboard.dismiss();
     setError('');
     setInfo('');
     try {
@@ -92,7 +95,13 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 34, paddingBottom: insets.bottom + 20 }]}>
+    <KeyboardAwareScrollViewCompat
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 34, paddingBottom: insets.bottom + 20 }]}
+      bottomOffset={72}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.brand}><BrandMark size={56} /><Text style={[styles.brandName, { color: colors.foreground }]}>BARBER APP</Text></View>
       <View style={styles.heading}><Text style={[styles.title, { color: colors.foreground }]}>{verifying ? 'Confirme seu e-mail.' : 'Comece pelo essencial.'}</Text><Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{verifying ? `Digite o código enviado para ${email.trim()}.` : 'Crie sua conta e organize sua barbearia de um jeito mais leve.'}</Text></View>
       <View style={styles.form}>
@@ -103,7 +112,7 @@ export default function SignUpScreen() {
         {verifying ? <View style={styles.verificationActions}><Pressable onPress={resend} disabled={resending}><Text style={[styles.action, { color: colors.primary }]}>{resending ? 'Enviando...' : 'Reenviar código'}</Text></Pressable><Pressable onPress={startOver}><Text style={[styles.action, { color: colors.mutedForeground }]}>Usar outro e-mail</Text></Pressable></View> : null}
       </View>
       <View style={styles.footer}><Text style={[styles.footerText, { color: colors.mutedForeground }]}>Já tem uma conta?</Text><Pressable onPress={() => router.push('/(auth)/sign-in')}><Text style={[styles.link, { color: colors.primary }]}>Entrar</Text></Pressable></View>
-    </View>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 
@@ -112,7 +121,8 @@ function Field({ label, colors, ...props }: { label: string; colors: ReturnType<
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 22, justifyContent: 'space-between' },
+  container: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: 22, justifyContent: 'space-between' },
   brand: { gap: 14, alignItems: 'flex-start' },
   brandName: { fontSize: 12, fontWeight: '700', letterSpacing: 2.8 },
   heading: { gap: 10 },
