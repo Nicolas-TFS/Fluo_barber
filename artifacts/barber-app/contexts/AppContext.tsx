@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import {
   completeBarberAppointment,
   createBarberAppointment,
+  createBarberService,
+  deleteBarberAccount,
   getBarberShop,
   saveBarberShop,
   setAuthTokenGetter,
@@ -55,6 +57,8 @@ type AppContextValue = StoreData & {
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
   completeAppointment: (id: string, paymentMethod: PaymentMethod) => Promise<void>;
   updateAppointment: (id: string, update: AppointmentUpdate) => Promise<void>;
+  addService: (service: Omit<Service, 'id' | 'active'>) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const STORAGE_KEY = 'barber-app-store-v1';
@@ -243,8 +247,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const addService = async (service: Omit<Service, 'id' | 'active'>) => {
+    const created = await createBarberService(service);
+    await persistCache({ ...data, services: [...data.services, created] });
+  };
+
+  const deleteAccount = async () => {
+    await deleteBarberAccount({ confirmation: 'EXCLUIR' });
+    if (userId) {
+      await Promise.all([
+        AsyncStorage.removeItem(scopedStorageKey(userId)),
+        AsyncStorage.removeItem(STORAGE_KEY),
+      ]);
+    }
+    setData(emptyStore);
+  };
+
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment }),
+    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, deleteAccount }),
     [data, ready],
   );
 

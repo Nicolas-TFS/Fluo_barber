@@ -160,6 +160,50 @@ paths:
           description: Appointment not found
         "409":
           description: Time already booked
+  /services:
+    post:
+      operationId: createBarberService
+      tags: [barber-app]
+      summary: Add a service to the authenticated barbershop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+      responses:
+        "201":
+          description: Created service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberService"
+        "400":
+          description: Invalid service data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Barbershop not found
+  /account:
+    delete:
+      operationId: deleteBarberAccount
+      tags: [barber-app]
+      summary: Permanently delete the authenticated barbershop and Clerk user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteAccountRequest"
+      responses:
+        "200":
+          description: Account deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAccountResponse"
+        "401":
+          description: Unauthorized
 components:
   schemas:
     HealthStatus:
@@ -293,4 +337,27 @@ components:
           type: string
         paymentMethod:
           $ref: "#/components/schemas/PaymentMethod"
+    CreateServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: integer
+      required: [name, duration, price]
+    DeleteAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    DeleteAccountRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          enum: [EXCLUIR]
+      required: [confirmation]
 

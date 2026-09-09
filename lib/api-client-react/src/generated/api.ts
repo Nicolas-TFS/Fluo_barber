@@ -21,8 +21,12 @@ import type {
 
 import type {
   BarberAppointment,
+  BarberService,
   CompleteAppointmentRequest,
   CreateAppointmentRequest,
+  CreateServiceRequest,
+  DeleteAccountRequest,
+  DeleteAccountResponse,
   HealthStatus,
   SaveShopRequest,
   ShopData,
@@ -572,5 +576,147 @@ export const useUpdateBarberAppointment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateBarberAppointmentMutationOptions(options));
+    }
+
+export const getCreateBarberServiceUrl = () => {
+
+
+
+
+  return `/api/services`
+}
+
+/**
+ * @summary Add a service to the authenticated barbershop
+ */
+export const createBarberService = async (createServiceRequest: CreateServiceRequest, options?: Parameters<typeof customFetch>[1]): Promise<BarberService> => {
+
+  return customFetch<BarberService>(getCreateBarberServiceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createServiceRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateBarberServiceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBarberService>>, TError,{data: BodyType<CreateServiceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBarberService>>, TError,{data: BodyType<CreateServiceRequest>}, TContext> => {
+
+const mutationKey = ['createBarberService'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBarberService>>, {data: BodyType<CreateServiceRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBarberService(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBarberServiceMutationResult = NonNullable<Awaited<ReturnType<typeof createBarberService>>>
+    export type CreateBarberServiceMutationBody = BodyType<CreateServiceRequest>
+    export type CreateBarberServiceMutationError = ErrorType<void>
+
+    /**
+ * @summary Add a service to the authenticated barbershop
+ */
+export const useCreateBarberService = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBarberService>>, TError,{data: BodyType<CreateServiceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBarberService>>,
+        TError,
+        {data: BodyType<CreateServiceRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateBarberServiceMutationOptions(options));
+    }
+
+export const getDeleteBarberAccountUrl = () => {
+
+
+
+
+  return `/api/account`
+}
+
+/**
+ * @summary Permanently delete the authenticated barbershop and Clerk user
+ */
+export const deleteBarberAccount = async (deleteAccountRequest: DeleteAccountRequest, options?: Parameters<typeof customFetch>[1]): Promise<DeleteAccountResponse> => {
+
+  return customFetch<DeleteAccountResponse>(getDeleteBarberAccountUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(deleteAccountRequest)
+  }
+);}
+
+
+
+
+
+export const getDeleteBarberAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBarberAccount>>, TError,{data: BodyType<DeleteAccountRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBarberAccount>>, TError,{data: BodyType<DeleteAccountRequest>}, TContext> => {
+
+const mutationKey = ['deleteBarberAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBarberAccount>>, {data: BodyType<DeleteAccountRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteBarberAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBarberAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBarberAccount>>>
+    export type DeleteBarberAccountMutationBody = BodyType<DeleteAccountRequest>
+    export type DeleteBarberAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Permanently delete the authenticated barbershop and Clerk user
+ */
+export const useDeleteBarberAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBarberAccount>>, TError,{data: BodyType<DeleteAccountRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBarberAccount>>,
+        TError,
+        {data: BodyType<DeleteAccountRequest>},
+        TContext
+      > => {
+      return useMutation(getDeleteBarberAccountMutationOptions(options));
     }
 

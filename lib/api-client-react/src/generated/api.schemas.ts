@@ -92,3 +92,24 @@ export interface UpdateAppointmentRequest {
   paymentMethod?: PaymentMethod;
 }
 
+export interface CreateServiceRequest {
+  name: string;
+  duration: number;
+  price: number;
+}
+
+export interface DeleteAccountResponse {
+  success: boolean;
+}
+
+export type DeleteAccountRequestConfirmation = typeof DeleteAccountRequestConfirmation[keyof typeof DeleteAccountRequestConfirmation];
+
+
+export const DeleteAccountRequestConfirmation = {
+  EXCLUIR: 'EXCLUIR',
+} as const;
+
+export interface DeleteAccountRequest {
+  confirmation: DeleteAccountRequestConfirmation;
+}
+
