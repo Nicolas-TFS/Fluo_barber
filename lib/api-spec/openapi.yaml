@@ -128,6 +128,38 @@ paths:
           description: Unauthorized
         "404":
           description: Appointment not found
+  /appointments/{id}:
+    patch:
+      operationId: updateBarberAppointment
+      tags: [barber-app]
+      summary: Update an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentRequest"
+      responses:
+        "200":
+          description: Updated appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "400":
+          description: Invalid appointment data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Appointment not found
+        "409":
+          description: Time already booked
 components:
   schemas:
     HealthStatus:
@@ -244,4 +276,21 @@ components:
         paymentMethod:
           $ref: "#/components/schemas/PaymentMethod"
       required: [paymentMethod]
+    UpdateAppointmentRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
 

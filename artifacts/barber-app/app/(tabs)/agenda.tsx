@@ -98,9 +98,15 @@ export default function AgendaScreen() {
                   {item.status === 'completed' && item.paymentMethod ? <Text style={[styles.paid, { color: colors.accentForeground }]}><Feather name="check-circle" size={12} color={colors.accentForeground} /> Pago via {paymentLabels[item.paymentMethod]}</Text> : null}
                 </View>
                 {item.status === 'completed' ? (
-                  <View style={[styles.completedBadge, { backgroundColor: colors.accent }]}>
-                    <Feather name="check" size={14} color={colors.accentForeground} />
-                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Alterar atendimento de ${item.clientName}`}
+                    onPress={() => router.push({ pathname: '/agenda/new', params: { id: item.id } })}
+                    style={[styles.editButton, { backgroundColor: colors.accent, borderColor: colors.primary }]}
+                  >
+                    <Feather name="edit-2" size={13} color={colors.primary} />
+                    <Text style={[styles.editText, { color: colors.primary }]}>Alterar</Text>
+                  </Pressable>
                 ) : (
                   <Pressable onPress={() => setAppointmentToFinish(item)} style={[styles.finishButton, { backgroundColor: colors.primary }]}>
                     <Feather name="check" size={14} color={colors.primaryForeground} />
@@ -160,7 +166,8 @@ const styles = StyleSheet.create({
   paid: { fontSize: 11, fontWeight: '700' },
   finishButton: { minHeight: 34, paddingHorizontal: 10, borderRadius: 11, flexDirection: 'row', gap: 5, alignItems: 'center' },
   finishText: { fontSize: 11, fontWeight: '800' },
-  completedBadge: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  editButton: { minHeight: 34, paddingHorizontal: 9, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 5, alignItems: 'center' },
+  editText: { fontSize: 11, fontWeight: '800' },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.62)' },
   modalCard: { borderTopLeftRadius: 26, borderTopRightRadius: 26, borderWidth: 1, padding: 22, paddingBottom: 30 },
   modalHandle: { width: 40, height: 4, borderRadius: 4, alignSelf: 'center', marginBottom: 22 },

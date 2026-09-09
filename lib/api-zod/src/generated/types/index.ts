@@ -16,3 +16,4 @@ export * from './healthStatus';
 export * from './paymentMethod';
 export * from './saveShopRequest';
 export * from './shopData';
+export * from './updateAppointmentRequest';
