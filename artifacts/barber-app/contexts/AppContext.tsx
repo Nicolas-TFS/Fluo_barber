@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   completeBarberAppointment,
   createBarberAppointment,
@@ -120,11 +120,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncAttempt, setSyncAttempt] = useState(0);
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
+    setAuthTokenGetter(() => getTokenRef.current());
     return () => setAuthTokenGetter(null);
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -140,7 +142,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSyncError(null);
     const sync = async () => {
       try {
-        setAuthTokenGetter(() => getToken());
+        setAuthTokenGetter(() => getTokenRef.current());
         const remote = await getBarberShop();
         if (active) {
           const next = toStoreData(remote);
@@ -166,7 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [authLoaded, getToken, isSignedIn, syncAttempt, userId]);
+  }, [authLoaded, isSignedIn, syncAttempt, userId]);
 
   const retrySync = () => setSyncAttempt((attempt) => attempt + 1);
 
