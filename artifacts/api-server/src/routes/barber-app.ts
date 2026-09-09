@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { clerkClient } from "@clerk/express";
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, barberAppointments, barberClients, barberServices, barberShops } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
@@ -477,34 +477,15 @@ router.post("/clients", requireAuth, async (req, res) => {
     return;
   }
 
-  const inserted = await db.transaction(async (tx) => {
-    const rows = await tx
-      .insert(barberClients)
-      .values({
-        id: randomUUID(),
-        shopId: shop.id,
-        name: clientName,
-        phone: clientPhone,
-      })
-      .returning();
-    const client = rows[0];
-    const unlinkedAppointments = await tx
-      .select()
-      .from(barberAppointments)
-      .where(and(eq(barberAppointments.shopId, shop.id), isNull(barberAppointments.clientId)));
-    const normalizedPhone = client.phone.replace(/\D/g, "");
-    const normalizedName = client.name.trim().toLocaleLowerCase("pt-BR");
-    const matchingIds = unlinkedAppointments
-      .filter((appointment) =>
-        normalizedPhone
-          ? appointment.clientPhone.replace(/\D/g, "") === normalizedPhone
-          : appointment.clientName.trim().toLocaleLowerCase("pt-BR") === normalizedName)
-      .map((appointment) => appointment.id);
-    if (matchingIds.length > 0) {
-      await tx.update(barberAppointments).set({ clientId: client.id }).where(inArray(barberAppointments.id, matchingIds));
-    }
-    return rows;
-  });
+  const inserted = await db
+    .insert(barberClients)
+    .values({
+      id: randomUUID(),
+      shopId: shop.id,
+      name: clientName,
+      phone: clientPhone,
+    })
+    .returning();
   res.status(201).json({ ...inserted[0], createdAt: inserted[0].createdAt.toISOString() });
 });
 
