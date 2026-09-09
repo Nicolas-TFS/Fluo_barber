@@ -18,13 +18,23 @@ export default function SignInScreen() {
 
   const submit = async () => {
     setError('');
-    const result = await signIn.password({ emailAddress: email.trim(), password });
-    if (result.error) {
-      setError(result.error.message || 'Não foi possível entrar. Confira seus dados.');
-      return;
-    }
-    if (signIn.status === 'complete') {
-      await signIn.finalize({ navigate: () => router.replace('/') });
+    try {
+      const result = await signIn.password({ emailAddress: email.trim().toLowerCase(), password });
+      if (result.error) {
+        setError(result.error.message || 'Não foi possível entrar. Confira seus dados.');
+        return;
+      }
+      if (signIn.status === 'complete') {
+        await signIn.finalize({ navigate: () => router.replace('/') });
+        return;
+      }
+      if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
+        setError('Esta conta exige uma verificação adicional que ainda não está disponível nesta tela.');
+        return;
+      }
+      setError('O login não foi concluído. Confira se o e-mail foi verificado e tente novamente.');
+    } catch (submitError) {
+      setError((submitError as { message?: string }).message || 'Não foi possível entrar agora. Verifique sua conexão e tente novamente.');
     }
   };
 

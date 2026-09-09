@@ -19,13 +19,20 @@ export default function SetupScreen() {
   const [openingTime, setOpeningTime] = useState('09:00');
   const [closingTime, setClosingTime] = useState('19:00');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const save = async () => {
     if (!shopName.trim() || !ownerName.trim()) return;
     setSaving(true);
-    await saveProfile({ shopName: shopName.trim(), ownerName: ownerName.trim(), phone: phone.trim(), openingTime, closingTime });
-    setSaving(false);
-    router.replace('/(tabs)');
+    setError('');
+    try {
+      await saveProfile({ shopName: shopName.trim(), ownerName: ownerName.trim(), phone: phone.trim(), openingTime, closingTime });
+      router.replace('/(tabs)');
+    } catch (saveError) {
+      setError((saveError as { message?: string }).message || 'Não foi possível salvar sua barbearia no banco. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -45,6 +52,7 @@ export default function SetupScreen() {
           <View style={styles.timeField}><Field label="Fecha às" value={closingTime} onChangeText={setClosingTime} placeholder="19:00" colors={colors} /></View>
         </View>
       </View>
+      {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
       <PrimaryButton label="Entrar no painel" onPress={save} disabled={!shopName.trim() || !ownerName.trim()} loading={saving} />
     </KeyboardAwareScrollViewCompat>
   );
@@ -66,4 +74,5 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   label: { fontSize: 12, fontWeight: '600' },
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
+  error: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
 });
