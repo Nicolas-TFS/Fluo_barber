@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PaymentMethod, useShopStore } from '@/contexts/AppContext';
@@ -27,6 +27,44 @@ function longDate(dateKey: string) {
   return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(year, month - 1, day));
 }
 
+type PeriodKey = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
+
+const periodLabels: Record<PeriodKey, string> = {
+  today: 'Hoje',
+  yesterday: 'Ontem',
+  thisWeek: 'Esta semana',
+  lastWeek: 'Semana passada',
+  thisMonth: 'Este mês',
+  lastMonth: 'Mês passado',
+  custom: 'Escolher data',
+};
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function getPeriodRange(period: PeriodKey, now: Date, customDate: string) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'yesterday') {
+    const yesterday = formatDateKey(addDays(today, -1));
+    return { start: yesterday, end: yesterday };
+  }
+  if (period === 'thisWeek' || period === 'lastWeek') {
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const thisMonday = addDays(today, -mondayOffset);
+    const start = period === 'lastWeek' ? addDays(thisMonday, -7) : thisMonday;
+    return { start: formatDateKey(start), end: formatDateKey(addDays(start, 6)) };
+  }
+  if (period === 'thisMonth' || period === 'lastMonth') {
+    const month = period === 'lastMonth' ? now.getMonth() - 1 : now.getMonth();
+    const start = new Date(now.getFullYear(), month, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    return { start: formatDateKey(start), end: formatDateKey(end) };
+  }
+  const date = period === 'custom' ? customDate : formatDateKey(today);
+  return { start: date, end: date };
+}
+
 export default function FinanceScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -34,11 +72,15 @@ export default function FinanceScreen() {
   const { appointments, services } = useShopStore();
   const now = new Date();
   const today = formatDateKey(now);
+  const [period, setPeriod] = useState<PeriodKey>('today');
   const [selectedDate, setSelectedDate] = useState(today);
+  const [periodModalOpen, setPeriodModalOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const range = getPeriodRange(period, now, selectedDate);
   const completed = useMemo(
-    () => appointments.filter((appointment) => appointment.status === 'completed' && appointment.date === selectedDate),
-    [appointments, selectedDate],
+    () => appointments.filter((appointment) => appointment.status === 'completed' && appointment.date >= range.start && appointment.date <= range.end),
+    [appointments, range.end, range.start],
   );
   const getAmount = (appointment: (typeof appointments)[number]) => appointment.amount || services.find((service) => service.id === appointment.serviceId)?.price || 0;
   const total = completed.reduce((sum, appointment) => sum + getAmount(appointment), 0);
@@ -65,63 +107,22 @@ export default function FinanceScreen() {
         title="Dinheiro organizado."
         trailing={<Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}><Feather name="arrow-left" size={20} color={colors.foreground} /></Pressable>}
       />
-      <View style={[styles.calendarCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.selectedDateRow}>
-          <View style={styles.selectedDateCopy}>
-            <Text style={[styles.dateLabel, { color: colors.mutedForeground }]}>Data do financeiro</Text>
-            <Text style={[styles.selectedDate, { color: colors.foreground }]}>{longDate(selectedDate)}</Text>
-          </View>
-          {selectedDate !== today ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setSelectedDate(today);
-                setCalendarMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-              }}
-              style={[styles.todayButton, { backgroundColor: colors.secondary }]}
-            >
-              <Text style={[styles.todayButtonText, { color: colors.primary }]}>Hoje</Text>
-            </Pressable>
-          ) : <Feather name="calendar" size={20} color={colors.primary} />}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setPeriodModalOpen(true)}
+        style={[styles.periodButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.periodIcon, { backgroundColor: colors.accent }]}><Feather name="calendar" size={18} color={colors.primary} /></View>
+        <View style={styles.selectedDateCopy}>
+          <Text style={[styles.dateLabel, { color: colors.mutedForeground }]}>Período do financeiro</Text>
+          <Text style={[styles.selectedDate, { color: colors.foreground }]}>
+            {period === 'custom' ? longDate(selectedDate) : periodLabels[period]}
+          </Text>
         </View>
-        <View style={styles.monthHeader}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Mês anterior" onPress={() => changeMonth(-1)} style={styles.iconButton}>
-            <Feather name="chevron-left" size={20} color={colors.foreground} />
-          </Pressable>
-          <Text style={[styles.monthTitle, { color: colors.foreground }]}>{monthTitle(calendarMonth)}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Próximo mês" onPress={() => changeMonth(1)} style={styles.iconButton}>
-            <Feather name="chevron-right" size={20} color={colors.foreground} />
-          </Pressable>
-        </View>
-        <View style={styles.weekRow}>
-          {['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'].map((day) => (
-            <Text key={day} style={[styles.weekDay, { color: colors.mutedForeground }]}>{day}</Text>
-          ))}
-        </View>
-        <View style={styles.calendarGrid}>
-          {calendarDays.map((day, index) => {
-            if (!day) return <View key={`empty-${index}`} style={styles.calendarDay} />;
-            const dateKey = formatDateKey(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day));
-            const selected = dateKey === selectedDate;
-            const isToday = dateKey === today;
-            return (
-              <Pressable
-                key={dateKey}
-                accessibilityRole="button"
-                accessibilityLabel={`Selecionar dia ${day}`}
-                onPress={() => setSelectedDate(dateKey)}
-                style={[styles.calendarDay, selected && { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.dayText, { color: selected ? colors.primaryForeground : colors.foreground }, isToday && !selected && { color: colors.primary, fontWeight: '800' }]}>
-                  {day}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+        <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+      </Pressable>
       <View style={[styles.totalCard, { backgroundColor: colors.primary }]}>
-        <Text style={[styles.totalLabel, { color: colors.primaryForeground }]}>Total recebido no dia</Text>
+        <Text style={[styles.totalLabel, { color: colors.primaryForeground }]}>Total recebido no período</Text>
         <Text style={[styles.totalValue, { color: colors.primaryForeground }]}>R$ {total.toFixed(2).replace('.', ',')}</Text>
         <Text style={[styles.totalMeta, { color: colors.primaryForeground }]}>{completed.length} atendimento{completed.length === 1 ? '' : 's'} finalizado{completed.length === 1 ? '' : 's'}</Text>
       </View>
@@ -142,8 +143,8 @@ export default function FinanceScreen() {
       {completed.length === 0 ? (
         <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Feather name="bar-chart-2" size={24} color={colors.primary} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhum recebimento nesta data</Text>
-          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Escolha outra data ou finalize um atendimento na agenda.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhum recebimento neste período</Text>
+          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Escolha outro período ou finalize um atendimento na agenda.</Text>
         </View>
       ) : (
         completed.slice().sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || '')).slice(0, 8).map((appointment) => (
@@ -157,6 +158,80 @@ export default function FinanceScreen() {
           </View>
         ))
       )}
+      <Modal visible={periodModalOpen} transparent animationType="fade" onRequestClose={() => setPeriodModalOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setPeriodModalOpen(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={(event) => event.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Selecionar período</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Escolha o intervalo do financeiro</Text>
+              </View>
+              <Pressable onPress={() => setPeriodModalOpen(false)} style={styles.iconButton}><Feather name="x" size={21} color={colors.foreground} /></Pressable>
+            </View>
+            {!calendarOpen ? (
+              <View style={styles.periodOptions}>
+                {(Object.keys(periodLabels) as PeriodKey[]).map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={() => {
+                      if (option === 'custom') {
+                        setCalendarOpen(true);
+                        return;
+                      }
+                      setPeriod(option);
+                      setPeriodModalOpen(false);
+                    }}
+                    style={[styles.periodOption, { borderBottomColor: colors.border }, period === option && { backgroundColor: colors.accent }]}
+                  >
+                    <Text style={[styles.periodOptionText, { color: colors.foreground }]}>{periodLabels[option]}</Text>
+                    {period === option ? <Feather name="check" size={18} color={colors.primary} /> : option === 'custom' ? <Feather name="chevron-right" size={18} color={colors.mutedForeground} /> : null}
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <>
+                <View style={styles.monthHeader}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Mês anterior" onPress={() => changeMonth(-1)} style={styles.iconButton}>
+                    <Feather name="chevron-left" size={20} color={colors.foreground} />
+                  </Pressable>
+                  <Text style={[styles.monthTitle, { color: colors.foreground }]}>{monthTitle(calendarMonth)}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Próximo mês" onPress={() => changeMonth(1)} style={styles.iconButton}>
+                    <Feather name="chevron-right" size={20} color={colors.foreground} />
+                  </Pressable>
+                </View>
+                <View style={styles.weekRow}>
+                  {['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'].map((day) => <Text key={day} style={[styles.weekDay, { color: colors.mutedForeground }]}>{day}</Text>)}
+                </View>
+                <View style={styles.calendarGrid}>
+                  {calendarDays.map((day, index) => {
+                    if (!day) return <View key={`empty-${index}`} style={styles.calendarDay} />;
+                    const dateKey = formatDateKey(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day));
+                    const selected = dateKey === selectedDate;
+                    return (
+                      <Pressable
+                        key={dateKey}
+                        onPress={() => {
+                          setSelectedDate(dateKey);
+                          setPeriod('custom');
+                          setCalendarOpen(false);
+                          setPeriodModalOpen(false);
+                        }}
+                        style={[styles.calendarDay, selected && { backgroundColor: colors.primary }]}
+                      >
+                        <Text style={[styles.dayText, { color: selected ? colors.primaryForeground : colors.foreground }]}>{day}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Pressable onPress={() => setCalendarOpen(false)} style={styles.backToOptions}>
+                  <Feather name="arrow-left" size={17} color={colors.primary} />
+                  <Text style={[styles.backToOptionsText, { color: colors.primary }]}>Voltar aos períodos</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -164,13 +239,11 @@ export default function FinanceScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 20 },
   backButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  calendarCard: { borderWidth: 1, borderRadius: 20, padding: 15, marginBottom: 16 },
-  selectedDateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
+  periodButton: { minHeight: 74, borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  periodIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   selectedDateCopy: { flex: 1, gap: 4 },
   dateLabel: { fontSize: 11, fontWeight: '700' },
   selectedDate: { fontSize: 14, fontWeight: '700', textTransform: 'capitalize' },
-  todayButton: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  todayButtonText: { fontSize: 12, fontWeight: '800' },
   monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   iconButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   monthTitle: { fontSize: 14, fontWeight: '800', textTransform: 'capitalize' },
@@ -199,4 +272,14 @@ const styles = StyleSheet.create({
   receiptName: { fontSize: 14, fontWeight: '700' },
   receiptMeta: { fontSize: 11 },
   receiptAmount: { fontSize: 13, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end', padding: 16 },
+  modalCard: { borderWidth: 1, borderRadius: 24, padding: 18, paddingBottom: 24 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '800' },
+  modalSubtitle: { fontSize: 12, marginTop: 4 },
+  periodOptions: { overflow: 'hidden', borderRadius: 14 },
+  periodOption: { minHeight: 52, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  periodOptionText: { fontSize: 15, fontWeight: '600' },
+  backToOptions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14, minHeight: 42 },
+  backToOptionsText: { fontSize: 13, fontWeight: '700' },
 });
