@@ -18,7 +18,8 @@ export default function SignUpScreen() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [resending, setResending] = useState(false);
-  const verifying = signUp.status === 'missing_requirements' && signUp.unverifiedFields.includes('email_address');
+  const [verificationSent, setVerificationSent] = useState(false);
+  const verifying = verificationSent && signUp.status === 'missing_requirements' && signUp.unverifiedFields.includes('email_address');
 
   const submit = async () => {
     setError('');
@@ -38,6 +39,7 @@ export default function SignUpScreen() {
         setError(codeResult.error.message || 'Não foi possível enviar o código.');
         return;
       }
+      setVerificationSent(true);
       setInfo(`Código enviado para ${email.trim()}. Verifique também a pasta de spam.`);
     } catch {
       setError('Não foi possível concluir o cadastro agora. Tente novamente.');
@@ -79,6 +81,7 @@ export default function SignUpScreen() {
 
   const startOver = () => {
     signUp.reset();
+    setVerificationSent(false);
     setCode('');
     setError('');
     setInfo('');
