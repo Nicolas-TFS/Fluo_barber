@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -24,6 +24,7 @@ export default function ClientDetailsScreen() {
   const [editPhone, setEditPhone] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [error, setError] = useState('');
   const client = clients.find((item) => item.id === id);
   const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(month);
@@ -74,25 +75,19 @@ export default function ClientDetailsScreen() {
     }
   };
 
-  const confirmDelete = () => {
-    Alert.alert(
-      'Excluir cliente?',
-      'O cadastro será removido. Os atendimentos continuam na agenda e no financeiro, mas deixam de aparecer no controle deste cliente.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => {
-            setDeleting(true);
-            void deleteClient(client.id)
-              .then(() => router.back())
-              .catch(() => Alert.alert('Não foi possível excluir', 'Tente novamente.'))
-              .finally(() => setDeleting(false));
-          },
-        },
-      ],
-    );
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteClient(client.id);
+      setDeleteConfirmOpen(false);
+      router.back();
+    } catch {
+      setError('Não foi possível excluir o cliente. Tente novamente.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -111,7 +106,7 @@ export default function ClientDetailsScreen() {
             <Feather name="edit-2" size={16} color={colors.foreground} />
           </Pressable>
         </View>
-        <Pressable disabled={deleting} onPress={confirmDelete} style={styles.deleteButton}>
+        <Pressable disabled={deleting} onPress={() => { setError(''); setDeleteConfirmOpen(true); }} style={styles.deleteButton}>
           <Feather name="trash-2" size={15} color={colors.destructive} />
           <Text style={[styles.deleteText, { color: colors.destructive }]}>{deleting ? 'Excluindo...' : 'Excluir cliente'}</Text>
         </Pressable>
@@ -186,6 +181,26 @@ export default function ClientDetailsScreen() {
           </View>
         </View>
       </Modal>
+      <Modal visible={deleteConfirmOpen} transparent animationType="fade" onRequestClose={() => setDeleteConfirmOpen(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.dangerIcon, { backgroundColor: colors.secondary }]}>
+              <Feather name="trash-2" size={21} color={colors.destructive} />
+            </View>
+            <Text style={[styles.confirmTitle, { color: colors.foreground }]}>Excluir cliente?</Text>
+            <Text style={[styles.confirmDescription, { color: colors.mutedForeground }]}>
+              O cadastro será removido. Os atendimentos continuam na agenda e no financeiro, mas deixam de aparecer no controle deste cliente.
+            </Text>
+            {error ? <Text style={[styles.confirmError, { color: colors.destructive }]}>{error}</Text> : null}
+            <Pressable disabled={deleting} onPress={() => void handleDelete()} style={[styles.confirmDelete, { backgroundColor: colors.destructive }]}>
+              <Text style={[styles.confirmDeleteText, { color: colors.primaryForeground }]}>{deleting ? 'Excluindo...' : 'Excluir cliente'}</Text>
+            </Pressable>
+            <Pressable disabled={deleting} onPress={() => setDeleteConfirmOpen(false)} style={styles.confirmCancel}>
+              <Text style={[styles.confirmCancelText, { color: colors.foreground }]}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -228,4 +243,14 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: '600', marginTop: 3 },
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, paddingHorizontal: 15, fontSize: 15 },
   error: { fontSize: 12 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, backgroundColor: 'rgba(0,0,0,0.72)' },
+  confirmCard: { borderWidth: 1, borderRadius: 22, padding: 20, alignItems: 'center' },
+  dangerIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  confirmTitle: { fontSize: 20, fontWeight: '700' },
+  confirmDescription: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 9, marginBottom: 18 },
+  confirmError: { fontSize: 12, textAlign: 'center', marginBottom: 12 },
+  confirmDelete: { minHeight: 50, borderRadius: 14, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  confirmDeleteText: { fontSize: 14, fontWeight: '700' },
+  confirmCancel: { minHeight: 46, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  confirmCancelText: { fontSize: 14, fontWeight: '700' },
 });
