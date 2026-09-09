@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useUser } from '@clerk/expo';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -28,7 +29,15 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={[styles.screen, { backgroundColor: colors.background }]} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 92 }} showsVerticalScrollIndicator={false}>
-      <ScreenHeader eyebrow="Hoje" title={`Olá, ${firstName}.`} trailing={<View style={[styles.avatar, { backgroundColor: colors.accent }]}><Text style={[styles.avatarText, { color: colors.accentForeground }]}>{firstName.slice(0, 1).toUpperCase()}</Text></View>} />
+      <ScreenHeader
+        eyebrow="Hoje"
+        title={`Olá, ${firstName}.`}
+        trailing={
+          profile?.profileImage
+            ? <Image source={{ uri: profile.profileImage }} style={styles.avatarImage} contentFit="cover" />
+            : <View style={[styles.avatar, { backgroundColor: colors.accent }]}><Text style={[styles.avatarText, { color: colors.accentForeground }]}>{firstName.slice(0, 1).toUpperCase()}</Text></View>
+        }
+      />
       <Text style={[styles.date, { color: colors.mutedForeground }]}>{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</Text>
       <View style={styles.statsGrid}>
         <Stat icon="trending-up" label="Faturamento" value={`R$ ${todayRevenue.toFixed(2).replace('.', ',')}`} colors={colors} />
@@ -55,6 +64,7 @@ function QuickAction({ icon, label, onPress, colors }: { icon: React.ComponentPr
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 20 },
   avatar: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  avatarImage: { width: 42, height: 42, borderRadius: 14 },
   avatarText: { fontSize: 17, fontWeight: '700' },
   date: { fontSize: 13, marginTop: -13, marginBottom: 22, textTransform: 'capitalize' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
