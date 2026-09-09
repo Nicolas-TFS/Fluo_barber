@@ -274,6 +274,38 @@ export const CreateBarberClientResponse = zod.object({
 
 
 /**
+ * @summary Update a client from the authenticated barbershop
+ */
+export const UpdateBarberClientParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateBarberClientBody = zod.object({
+  "name": zod.string(),
+  "phone": zod.string()
+})
+
+export const UpdateBarberClientResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a client without deleting their appointments
+ */
+export const DeleteBarberClientParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteBarberClientResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary Permanently delete the authenticated barbershop and Clerk user
  */
 export const DeleteBarberAccountBody = zod.object({

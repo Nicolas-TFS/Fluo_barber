@@ -7,10 +7,12 @@ import {
   createBarberClient,
   createBarberService,
   deleteBarberAccount,
+  deleteBarberClient,
   getBarberShop,
   saveBarberShop,
   setAuthTokenGetter,
   updateBarberAppointment,
+  updateBarberClient,
 } from '@workspace/api-client-react';
 
 export type ShopProfile = {
@@ -69,6 +71,8 @@ type AppContextValue = StoreData & {
   updateAppointment: (id: string, update: AppointmentUpdate) => Promise<void>;
   addService: (service: Omit<Service, 'id' | 'active'>) => Promise<void>;
   addClient: (client: Pick<Client, 'name' | 'phone'>) => Promise<void>;
+  updateClient: (id: string, client: Pick<Client, 'name' | 'phone'>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
 };
 
@@ -253,6 +257,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await persistCache(toStoreData(remote));
   };
 
+  const updateClient = async (id: string, client: Pick<Client, 'name' | 'phone'>) => {
+    await updateBarberClient(id, client);
+    const remote = await getBarberShop();
+    await persistCache(toStoreData(remote));
+  };
+
+  const deleteClient = async (id: string) => {
+    await deleteBarberClient(id);
+    const remote = await getBarberShop();
+    await persistCache(toStoreData(remote));
+  };
+
   const deleteAccount = async () => {
     await deleteBarberAccount({ confirmation: 'EXCLUIR' });
     if (userId) {
@@ -265,7 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, addClient, deleteAccount }),
+    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, addClient, updateClient, deleteClient, deleteAccount }),
     [data, ready],
   );
 

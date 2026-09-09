@@ -208,6 +208,57 @@ paths:
           description: Unauthorized
         "404":
           description: Barbershop not found
+  /clients/{id}:
+    patch:
+      operationId: updateBarberClient
+      tags: [barber-app]
+      summary: Update a client from the authenticated barbershop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClientRequest"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberClient"
+        "400":
+          description: Invalid client data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Client not found
+    delete:
+      operationId: deleteBarberClient
+      tags: [barber-app]
+      summary: Delete a client without deleting their appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteClientResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Client not found
   /account:
     delete:
       operationId: deleteBarberAccount
@@ -407,6 +458,20 @@ components:
         phone:
           type: string
       required: [name, phone]
+    UpdateClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+      required: [name, phone]
+    DeleteClientResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
     DeleteAccountResponse:
       type: object
       properties:
