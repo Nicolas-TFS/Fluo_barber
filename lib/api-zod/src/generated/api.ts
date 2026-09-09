@@ -28,6 +28,7 @@ export const GetBarberShopResponse = zod.object({
   "address": zod.string(),
   "city": zod.string(),
   "profileImage": zod.string(),
+  "bookingId": zod.string().optional(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
@@ -71,6 +72,7 @@ export const SaveBarberShopBody = zod.object({
   "address": zod.string(),
   "city": zod.string(),
   "profileImage": zod.string(),
+  "bookingId": zod.string().optional(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
@@ -110,6 +112,7 @@ export const SaveBarberShopResponse = zod.object({
   "address": zod.string(),
   "city": zod.string(),
   "profileImage": zod.string(),
+  "bookingId": zod.string().optional(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
@@ -139,6 +142,63 @@ export const SaveBarberShopResponse = zod.object({
   "paymentMethod": zod.enum(['pix', 'cash', 'credit_card', 'debit_card']).optional(),
   "completedAt": zod.string().nullish()
 }))
+})
+
+
+/**
+ * @summary Load public booking information and availability
+ */
+export const GetPublicBookingShopParams = zod.object({
+  "shopId": zod.coerce.string()
+})
+
+export const GetPublicBookingShopQueryParams = zod.object({
+  "date": zod.coerce.string()
+})
+
+export const GetPublicBookingShopResponse = zod.object({
+  "shopName": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "profileImage": zod.string(),
+  "services": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "duration": zod.number().int(),
+  "price": zod.number().int(),
+  "active": zod.boolean()
+})),
+  "availableTimes": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Create an appointment from the public booking page
+ */
+export const CreatePublicBookingParams = zod.object({
+  "shopId": zod.coerce.string()
+})
+
+export const CreatePublicBookingBody = zod.object({
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "serviceId": zod.string(),
+  "date": zod.string(),
+  "time": zod.string()
+})
+
+export const CreatePublicBookingResponse = zod.object({
+  "id": zod.string(),
+  "clientId": zod.string().nullish(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "serviceId": zod.string(),
+  "amount": zod.number().int(),
+  "date": zod.string(),
+  "time": zod.string(),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "paymentMethod": zod.enum(['pix', 'cash', 'credit_card', 'debit_card']).optional(),
+  "completedAt": zod.string().nullish()
 })
 
 

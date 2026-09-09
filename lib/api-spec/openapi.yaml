@@ -40,8 +40,6 @@ paths:
                 $ref: "#/components/schemas/ShopData"
         "401":
           description: Unauthorized
-        "404":
-          description: Barbershop not configured
     put:
       operationId: saveBarberShop
       tags: [barber-app]
@@ -63,6 +61,58 @@ paths:
           description: Invalid barbershop data
         "401":
           description: Unauthorized
+  /booking/{shopId}:
+    get:
+      operationId: getPublicBookingShop
+      tags: [barber-app]
+      summary: Load public booking information and availability
+      parameters:
+        - name: shopId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public booking information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBookingShop"
+        "404":
+          description: Barbershop not found
+    post:
+      operationId: createPublicBooking
+      tags: [barber-app]
+      summary: Create an appointment from the public booking page
+      parameters:
+        - name: shopId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicBookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "409":
+          description: Time already booked
+        "404":
+          description: Barbershop not configured
   /appointments:
     get:
       operationId: getBarberAppointments
@@ -303,6 +353,8 @@ components:
           type: string
         profileImage:
           type: string
+        bookingId:
+          type: string
         openingTime:
           type: string
         closingTime:
@@ -420,6 +472,40 @@ components:
         time:
           type: string
       required: [clientName, clientPhone, serviceId, amount, date, time]
+    PublicBookingShop:
+      type: object
+      properties:
+        shopName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        profileImage:
+          type: string
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        availableTimes:
+          type: array
+          items:
+            type: string
+      required: [shopName, address, city, profileImage, services, availableTimes]
+    PublicBookingRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+      required: [clientName, clientPhone, serviceId, date, time]
     CompleteAppointmentRequest:
       type: object
       properties:

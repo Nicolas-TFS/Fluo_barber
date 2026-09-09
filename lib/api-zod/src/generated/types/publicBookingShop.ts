@@ -5,15 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BarberService } from './barberService';
 
-export interface BarberProfile {
+export interface PublicBookingShop {
   shopName: string;
-  ownerName: string;
-  phone: string;
   address: string;
   city: string;
   profileImage: string;
-  bookingId?: string;
-  openingTime: string;
-  closingTime: string;
+  services: BarberService[];
+  availableTimes: string[];
 }

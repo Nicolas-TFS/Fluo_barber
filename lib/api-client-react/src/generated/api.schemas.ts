@@ -16,6 +16,7 @@ export interface BarberProfile {
   address: string;
   city: string;
   profileImage: string;
+  bookingId?: string;
   openingTime: string;
   closingTime: string;
 }
@@ -92,6 +93,23 @@ export interface CreateAppointmentRequest {
   time: string;
 }
 
+export interface PublicBookingShop {
+  shopName: string;
+  address: string;
+  city: string;
+  profileImage: string;
+  services: BarberService[];
+  availableTimes: string[];
+}
+
+export interface PublicBookingRequest {
+  clientName: string;
+  clientPhone: string;
+  serviceId: string;
+  date: string;
+  time: string;
+}
+
 export interface CompleteAppointmentRequest {
   paymentMethod: PaymentMethod;
 }
@@ -141,4 +159,8 @@ export const DeleteAccountRequestConfirmation = {
 export interface DeleteAccountRequest {
   confirmation: DeleteAccountRequestConfirmation;
 }
+
+export type GetPublicBookingShopParams = {
+date: string;
+};
 
