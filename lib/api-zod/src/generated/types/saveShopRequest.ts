@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BarberAppointment } from './barberAppointment';
+import type { BarberClient } from './barberClient';
 import type { BarberProfile } from './barberProfile';
 import type { BarberService } from './barberService';
 
 export interface SaveShopRequest {
   profile: BarberProfile;
   services?: BarberService[];
+  clients?: BarberClient[];
   appointments?: BarberAppointment[];
 }

@@ -10,6 +10,7 @@ import type { PaymentMethod } from './paymentMethod';
 
 export interface BarberAppointment {
   id: string;
+  clientId?: string | null;
   clientName: string;
   clientPhone: string;
   serviceId: string;

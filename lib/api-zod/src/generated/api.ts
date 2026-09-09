@@ -35,8 +35,15 @@ export const GetBarberShopResponse = zod.object({
   "price": zod.number().int(),
   "active": zod.boolean()
 })),
+  "clients": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "createdAt": zod.string()
+})),
   "appointments": zod.array(zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -68,8 +75,15 @@ export const SaveBarberShopBody = zod.object({
   "price": zod.number().int(),
   "active": zod.boolean()
 })).optional(),
+  "clients": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
   "appointments": zod.array(zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -97,8 +111,15 @@ export const SaveBarberShopResponse = zod.object({
   "price": zod.number().int(),
   "active": zod.boolean()
 })),
+  "clients": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "createdAt": zod.string()
+})),
   "appointments": zod.array(zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -117,6 +138,7 @@ export const SaveBarberShopResponse = zod.object({
  */
 export const GetBarberAppointmentsResponseItem = zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -134,6 +156,7 @@ export const GetBarberAppointmentsResponse = zod.array(GetBarberAppointmentsResp
  * @summary Create an appointment
  */
 export const CreateBarberAppointmentBody = zod.object({
+  "clientId": zod.string().optional(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -144,6 +167,7 @@ export const CreateBarberAppointmentBody = zod.object({
 
 export const CreateBarberAppointmentResponse = zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -169,6 +193,7 @@ export const CompleteBarberAppointmentBody = zod.object({
 
 export const CompleteBarberAppointmentResponse = zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -189,6 +214,7 @@ export const UpdateBarberAppointmentParams = zod.object({
 })
 
 export const UpdateBarberAppointmentBody = zod.object({
+  "clientId": zod.string().nullish(),
   "clientName": zod.string().optional(),
   "clientPhone": zod.string().optional(),
   "serviceId": zod.string().optional(),
@@ -200,6 +226,7 @@ export const UpdateBarberAppointmentBody = zod.object({
 
 export const UpdateBarberAppointmentResponse = zod.object({
   "id": zod.string(),
+  "clientId": zod.string().nullish(),
   "clientName": zod.string(),
   "clientPhone": zod.string(),
   "serviceId": zod.string(),
@@ -227,6 +254,22 @@ export const CreateBarberServiceResponse = zod.object({
   "duration": zod.number().int(),
   "price": zod.number().int(),
   "active": zod.boolean()
+})
+
+
+/**
+ * @summary Add a client to the authenticated barbershop
+ */
+export const CreateBarberClientBody = zod.object({
+  "name": zod.string(),
+  "phone": zod.string()
+})
+
+export const CreateBarberClientResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "createdAt": zod.string()
 })
 
 

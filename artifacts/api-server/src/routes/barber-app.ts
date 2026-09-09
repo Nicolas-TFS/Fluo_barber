@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { clerkClient } from "@clerk/express";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { db, barberAppointments, barberServices, barberShops } from "@workspace/db";
+import { db, barberAppointments, barberClients, barberServices, barberShops } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -20,8 +20,15 @@ type BarberService = {
   price: number;
   active: boolean;
 };
+type BarberClient = {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+};
 type BarberAppointment = {
   id: string;
+  clientId?: string | null;
   clientName: string;
   clientPhone: string;
   serviceId: string;
@@ -32,7 +39,7 @@ type BarberAppointment = {
   paymentMethod?: "pix" | "cash" | "credit_card" | "debit_card";
   completedAt?: string | null;
 };
-type ShopData = { profile: BarberProfile; services: BarberService[]; appointments: BarberAppointment[] };
+type ShopData = { profile: BarberProfile; services: BarberService[]; clients: BarberClient[]; appointments: BarberAppointment[] };
 const paymentMethods = new Set(["pix", "cash", "credit_card", "debit_card"]);
 const appointmentStatuses = new Set(["scheduled", "completed", "cancelled"]);
 
@@ -64,6 +71,7 @@ function isAppointment(value: unknown): value is BarberAppointment {
   if (!isRecord(value)) return false;
   return (
     isText(value.id) &&
+    (value.clientId === undefined || value.clientId === null || isText(value.clientId)) &&
     isText(value.clientName) &&
     typeof value.clientPhone === "string" &&
     isText(value.serviceId) &&
@@ -79,6 +87,7 @@ function isAppointment(value: unknown): value is BarberAppointment {
 function serializeAppointment(row: typeof barberAppointments.$inferSelect): BarberAppointment {
   return {
     id: row.id,
+    clientId: row.clientId,
     clientName: row.clientName,
     clientPhone: row.clientPhone,
     serviceId: row.serviceId,
@@ -98,8 +107,9 @@ async function findShop(clerkUserId: string) {
 async function buildShopData(clerkUserId: string): Promise<ShopData | null> {
   const shop = await findShop(clerkUserId);
   if (!shop) return null;
-  const [services, appointments] = await Promise.all([
+  const [services, clients, appointments] = await Promise.all([
     db.select().from(barberServices).where(eq(barberServices.shopId, shop.id)),
+    db.select().from(barberClients).where(eq(barberClients.shopId, shop.id)).orderBy(asc(barberClients.name)),
     db.select().from(barberAppointments).where(eq(barberAppointments.shopId, shop.id)).orderBy(asc(barberAppointments.date), asc(barberAppointments.time)),
   ]);
 
@@ -112,6 +122,7 @@ async function buildShopData(clerkUserId: string): Promise<ShopData | null> {
       closingTime: shop.closingTime,
     },
     services,
+    clients: clients.map((client) => ({ ...client, createdAt: client.createdAt.toISOString() })),
     appointments: appointments.map(serializeAppointment),
   };
 }
@@ -126,7 +137,7 @@ router.get("/shop", requireAuth, async (_req, res) => {
 });
 
 router.put("/shop", requireAuth, async (req, res) => {
-  const body = req.body as { profile?: unknown; services?: unknown; appointments?: unknown };
+  const body = req.body as { profile?: unknown; services?: unknown; clients?: unknown; appointments?: unknown };
   const profile = body.profile;
   if (!isProfile(profile)) {
     res.status(400).json({ error: "Invalid barbershop profile" });
@@ -168,12 +179,27 @@ router.put("/shop", requireAuth, async (req, res) => {
       await tx.insert(barberServices).values(services.map((service) => ({ ...service, shopId })));
     }
 
+    const clients = Array.isArray(body.clients)
+      ? body.clients.filter((client): client is BarberClient =>
+          isRecord(client) && isText(client.id) && isText(client.name) && typeof client.phone === "string" && isText(client.createdAt))
+      : [];
+    if (clients.length > 0) {
+      await tx.insert(barberClients).values(clients.map((client) => ({
+        id: client.id,
+        shopId,
+        name: client.name.trim(),
+        phone: client.phone.trim(),
+        createdAt: new Date(client.createdAt),
+      })));
+    }
+
     const appointments = Array.isArray(body.appointments) ? body.appointments.filter(isAppointment) : [];
     if (appointments.length > 0) {
       await tx.insert(barberAppointments).values(
         appointments.map((appointment) => ({
           id: appointment.id,
           shopId,
+          clientId: appointment.clientId ?? null,
           clientName: appointment.clientName,
           clientPhone: appointment.clientPhone,
           serviceId: appointment.serviceId,
@@ -207,9 +233,17 @@ router.get("/appointments", requireAuth, async (_req, res) => {
 });
 
 router.post("/appointments", requireAuth, async (req, res) => {
-  const body = req.body as { clientName?: unknown; clientPhone?: unknown; serviceId?: unknown; amount?: unknown; date?: unknown; time?: unknown };
-  const { clientName, clientPhone, serviceId, amount, date, time } = body;
-  if (!isText(clientName) || typeof clientPhone !== "string" || !isText(serviceId) || !Number.isInteger(amount) || !isText(date) || !isText(time)) {
+  const body = req.body as { clientId?: unknown; clientName?: unknown; clientPhone?: unknown; serviceId?: unknown; amount?: unknown; date?: unknown; time?: unknown };
+  const { clientId, clientName, clientPhone, serviceId, amount, date, time } = body;
+  if (
+    (clientId !== undefined && !isText(clientId)) ||
+    !isText(clientName) ||
+    typeof clientPhone !== "string" ||
+    !isText(serviceId) ||
+    !Number.isInteger(amount) ||
+    !isText(date) ||
+    !isText(time)
+  ) {
     res.status(400).json({ error: "Invalid appointment data" });
     return;
   }
@@ -218,6 +252,14 @@ router.post("/appointments", requireAuth, async (req, res) => {
   const shop = await findShop(res.locals.clerkUserId);
   if (!shop) {
     res.status(400).json({ error: "Configure the barbershop before creating appointments" });
+    return;
+  }
+
+  const selectedClient = clientId
+    ? await db.select().from(barberClients).where(and(eq(barberClients.id, clientId), eq(barberClients.shopId, shop.id))).limit(1).then((rows) => rows[0])
+    : undefined;
+  if (clientId && !selectedClient) {
+    res.status(400).json({ error: "Client not found" });
     return;
   }
 
@@ -247,8 +289,9 @@ router.post("/appointments", requireAuth, async (req, res) => {
     .values({
       id,
       shopId: shop.id,
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
+      clientId: selectedClient?.id ?? null,
+      clientName: selectedClient?.name ?? clientName.trim(),
+      clientPhone: selectedClient?.phone ?? clientPhone.trim(),
       serviceId,
       amount: normalizedAmount,
       date: date.trim(),
@@ -287,6 +330,7 @@ router.post("/appointments/:id/complete", requireAuth, async (req, res) => {
 
 router.patch("/appointments/:id", requireAuth, async (req, res) => {
   const body = req.body as {
+    clientId?: unknown;
     clientName?: unknown;
     clientPhone?: unknown;
     serviceId?: unknown;
@@ -312,8 +356,22 @@ router.patch("/appointments/:id", requireAuth, async (req, res) => {
     return;
   }
 
-  const clientName = body.clientName ?? current[0].clientName;
-  const clientPhone = body.clientPhone ?? current[0].clientPhone;
+  const clientId = Object.prototype.hasOwnProperty.call(body, "clientId")
+    ? body.clientId
+    : current[0].clientId;
+  if (clientId !== null && clientId !== undefined && !isText(clientId)) {
+    res.status(400).json({ error: "Invalid client" });
+    return;
+  }
+  const selectedClient = clientId
+    ? await db.select().from(barberClients).where(and(eq(barberClients.id, clientId), eq(barberClients.shopId, shop.id))).limit(1).then((rows) => rows[0])
+    : undefined;
+  if (clientId && !selectedClient) {
+    res.status(400).json({ error: "Client not found" });
+    return;
+  }
+  const clientName = selectedClient?.name ?? body.clientName ?? current[0].clientName;
+  const clientPhone = selectedClient?.phone ?? body.clientPhone ?? current[0].clientPhone;
   const serviceId = body.serviceId ?? current[0].serviceId;
   const amount = body.amount ?? current[0].amount;
   const date = body.date ?? current[0].date;
@@ -363,6 +421,7 @@ router.patch("/appointments/:id", requireAuth, async (req, res) => {
   const updated = await db
     .update(barberAppointments)
     .set({
+      clientId: selectedClient?.id ?? null,
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim(),
       serviceId,
@@ -403,6 +462,52 @@ router.post("/services", requireAuth, async (req, res) => {
   res.status(201).json(inserted[0]);
 });
 
+router.post("/clients", requireAuth, async (req, res) => {
+  const body = req.body as { name?: unknown; phone?: unknown };
+  if (!isText(body.name) || typeof body.phone !== "string") {
+    res.status(400).json({ error: "Invalid client data" });
+    return;
+  }
+  const clientName = body.name.trim();
+  const clientPhone = body.phone.trim();
+
+  const shop = await findShop(res.locals.clerkUserId);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+
+  const inserted = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(barberClients)
+      .values({
+        id: randomUUID(),
+        shopId: shop.id,
+        name: clientName,
+        phone: clientPhone,
+      })
+      .returning();
+    const client = rows[0];
+    const unlinkedAppointments = await tx
+      .select()
+      .from(barberAppointments)
+      .where(and(eq(barberAppointments.shopId, shop.id), isNull(barberAppointments.clientId)));
+    const normalizedPhone = client.phone.replace(/\D/g, "");
+    const normalizedName = client.name.trim().toLocaleLowerCase("pt-BR");
+    const matchingIds = unlinkedAppointments
+      .filter((appointment) =>
+        normalizedPhone
+          ? appointment.clientPhone.replace(/\D/g, "") === normalizedPhone
+          : appointment.clientName.trim().toLocaleLowerCase("pt-BR") === normalizedName)
+      .map((appointment) => appointment.id);
+    if (matchingIds.length > 0) {
+      await tx.update(barberAppointments).set({ clientId: client.id }).where(inArray(barberAppointments.id, matchingIds));
+    }
+    return rows;
+  });
+  res.status(201).json({ ...inserted[0], createdAt: inserted[0].createdAt.toISOString() });
+});
+
 router.delete("/account", requireAuth, async (req, res) => {
   const body = req.body as { confirmation?: unknown };
   if (body.confirmation !== "EXCLUIR") {
@@ -416,6 +521,7 @@ router.delete("/account", requireAuth, async (req, res) => {
   await db.transaction(async (tx) => {
     if (shop) {
       await tx.delete(barberAppointments).where(eq(barberAppointments.shopId, shop.id));
+      await tx.delete(barberClients).where(eq(barberClients.shopId, shop.id));
       await tx.delete(barberServices).where(eq(barberServices.shopId, shop.id));
       await tx.delete(barberShops).where(eq(barberShops.id, shop.id));
     }

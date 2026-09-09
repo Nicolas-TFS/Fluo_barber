@@ -8,6 +8,7 @@
 import type { PaymentMethod } from './paymentMethod';
 
 export interface UpdateAppointmentRequest {
+  clientId?: string | null;
   clientName?: string;
   clientPhone?: string;
   serviceId?: string;

@@ -8,10 +8,12 @@
 
 export * from './barberAppointment';
 export * from './barberAppointmentStatus';
+export * from './barberClient';
 export * from './barberProfile';
 export * from './barberService';
 export * from './completeAppointmentRequest';
 export * from './createAppointmentRequest';
+export * from './createClientRequest';
 export * from './createServiceRequest';
 export * from './deleteAccountRequest';
 export * from './deleteAccountRequestConfirmation';
