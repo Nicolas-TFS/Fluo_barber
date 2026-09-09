@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { clerkClient } from "@clerk/express";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, barberAppointments, barberClients, barberServices, barberShops } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
@@ -46,6 +46,12 @@ type BarberAppointment = {
 type ShopData = { profile: BarberProfile; services: BarberService[]; clients: BarberClient[]; appointments: BarberAppointment[] };
 const paymentMethods = new Set(["pix", "cash", "credit_card", "debit_card"]);
 const appointmentStatuses = new Set(["scheduled", "completed", "cancelled"]);
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const publicBookingLimits = new Map<string, { count: number; resetAt: number }>();
+const PUBLIC_BOOKING_WINDOW_MS = 10 * 60 * 1000;
+const PUBLIC_BOOKING_ORIGIN_LIMIT = 20;
+const PUBLIC_BOOKING_SHOP_LIMIT = 8;
 
 const defaultServices: BarberService[] = [
   { id: "service-cut", name: "Corte", duration: 30, price: 35, active: true },
@@ -59,6 +65,47 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isValidDate(value: string): boolean {
+  if (!datePattern.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
+function todayKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function toMinutes(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function consumePublicBookingLimit(key: string, limit: number, now: number): boolean {
+  const current = publicBookingLimits.get(key);
+  if (!current || current.resetAt <= now) {
+    publicBookingLimits.set(key, { count: 1, resetAt: now + PUBLIC_BOOKING_WINDOW_MS });
+    return true;
+  }
+  if (current.count >= limit) return false;
+  current.count += 1;
+  return true;
+}
+
+function publicBookingAllowed(origin: string, shopId: string): boolean {
+  const now = Date.now();
+  if (publicBookingLimits.size > 2_000) {
+    for (const [key, entry] of publicBookingLimits) {
+      if (entry.resetAt <= now) publicBookingLimits.delete(key);
+    }
+  }
+  return (
+    consumePublicBookingLimit(`origin:${origin}`, PUBLIC_BOOKING_ORIGIN_LIMIT, now) &&
+    consumePublicBookingLimit(`shop:${shopId}:origin:${origin}`, PUBLIC_BOOKING_SHOP_LIMIT, now)
+  );
 }
 
 function isProfile(value: unknown): value is BarberProfile {
@@ -150,8 +197,8 @@ router.get("/shop", requireAuth, async (_req, res) => {
 router.get("/booking/:shopId", async (req, res) => {
   const shopId = String(req.params.shopId);
   const date = typeof req.query.date === "string" ? req.query.date : "";
-  if (!isText(date)) {
-    res.status(400).json({ error: "Date is required" });
+  if (!isValidDate(date) || date < todayKey()) {
+    res.status(400).json({ error: "Choose a valid date that is not in the past" });
     return;
   }
   const shop = await db.select().from(barberShops).where(eq(barberShops.id, shopId)).limit(1).then((rows) => rows[0]);
@@ -167,10 +214,6 @@ router.get("/booking/:shopId", async (req, res) => {
       eq(barberAppointments.status, "scheduled"),
     )),
   ]);
-  const toMinutes = (value: string) => {
-    const [hours, minutes] = value.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
   const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   const occupied = new Set(appointments.map((appointment) => appointment.time));
   const availableTimes: string[] = [];
@@ -190,9 +233,37 @@ router.get("/booking/:shopId", async (req, res) => {
 
 router.post("/booking/:shopId", async (req, res) => {
   const shopId = String(req.params.shopId);
+  const origin = req.ip || req.socket.remoteAddress || "unknown";
+  if (!publicBookingAllowed(origin, shopId)) {
+    res.setHeader("Retry-After", String(Math.ceil(PUBLIC_BOOKING_WINDOW_MS / 1000)));
+    res.status(429).json({ error: "Too many booking attempts. Please wait a few minutes and try again." });
+    return;
+  }
   const { clientName, clientPhone, serviceId, date, time } = req.body as Record<string, unknown>;
   if (!isText(clientName) || !isText(clientPhone) || !isText(serviceId) || !isText(date) || !isText(time)) {
     res.status(400).json({ error: "Invalid booking data" });
+    return;
+  }
+  const normalizedName = clientName.trim();
+  const normalizedPhone = clientPhone.trim();
+  const normalizedDate = date.trim();
+  const normalizedTime = time.trim();
+  const phoneDigits = normalizedPhone.replace(/\D/g, "");
+  if (
+    normalizedName.length > 100 ||
+    normalizedPhone.length > 30 ||
+    phoneDigits.length < 8 ||
+    phoneDigits.length > 15 ||
+    !isValidDate(normalizedDate) ||
+    normalizedDate < todayKey() ||
+    !timePattern.test(normalizedTime)
+  ) {
+    res.status(400).json({ error: "Invalid booking data" });
+    return;
+  }
+  const shop = await db.select().from(barberShops).where(eq(barberShops.id, shopId)).limit(1).then((rows) => rows[0]);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
     return;
   }
   const service = await db.select().from(barberServices).where(and(
@@ -204,29 +275,48 @@ router.post("/booking/:shopId", async (req, res) => {
     res.status(404).json({ error: "Service not found" });
     return;
   }
-  const conflict = await db.select({ id: barberAppointments.id }).from(barberAppointments).where(and(
-    eq(barberAppointments.shopId, shopId),
-    eq(barberAppointments.date, date),
-    eq(barberAppointments.time, time),
-    eq(barberAppointments.status, "scheduled"),
-  )).limit(1);
-  if (conflict[0]) {
+  const openingMinutes = toMinutes(shop.openingTime);
+  const closingMinutes = toMinutes(shop.closingTime);
+  const requestedMinutes = toMinutes(normalizedTime);
+  if (
+    !timePattern.test(shop.openingTime) ||
+    !timePattern.test(shop.closingTime) ||
+    requestedMinutes < openingMinutes ||
+    requestedMinutes + service.duration > closingMinutes ||
+    (requestedMinutes - openingMinutes) % 30 !== 0
+  ) {
+    res.status(400).json({ error: "The selected time is outside business hours" });
+    return;
+  }
+  const inserted = await db.transaction(async (tx) => {
+    const slotKey = `${shopId}:${normalizedDate}:${normalizedTime}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${slotKey}))`);
+    const conflict = await tx.select({ id: barberAppointments.id }).from(barberAppointments).where(and(
+      eq(barberAppointments.shopId, shopId),
+      eq(barberAppointments.date, normalizedDate),
+      eq(barberAppointments.time, normalizedTime),
+      eq(barberAppointments.status, "scheduled"),
+    )).limit(1);
+    if (conflict[0]) return null;
+    const rows = await tx.insert(barberAppointments).values({
+      id: randomUUID(),
+      shopId,
+      clientId: null,
+      clientName: normalizedName,
+      clientPhone: normalizedPhone,
+      serviceId,
+      amount: service.price,
+      date: normalizedDate,
+      time: normalizedTime,
+      status: "scheduled",
+    }).returning();
+    return rows[0];
+  });
+  if (!inserted) {
     res.status(409).json({ error: "This time is already booked" });
     return;
   }
-  const inserted = await db.insert(barberAppointments).values({
-    id: randomUUID(),
-    shopId,
-    clientId: null,
-    clientName: clientName.trim(),
-    clientPhone: clientPhone.trim(),
-    serviceId,
-    amount: service.price,
-    date: date.trim(),
-    time: time.trim(),
-    status: "scheduled",
-  }).returning();
-  res.status(201).json(serializeAppointment(inserted[0]));
+  res.status(201).json(serializeAppointment(inserted));
 });
 
 router.put("/shop", requireAuth, async (req, res) => {

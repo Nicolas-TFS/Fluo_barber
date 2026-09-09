@@ -64,6 +64,8 @@ export default function PublicBookingScreen() {
         const refreshed = await getPublicBookingShop(shopId, { date });
         setData(refreshed);
         setTime('');
+      } else if ((submitError as { status?: number }).status === 429) {
+        setError('Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.');
       } else {
         setError('Não foi possível concluir o agendamento. Tente novamente.');
       }
