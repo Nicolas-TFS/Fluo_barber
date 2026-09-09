@@ -24,6 +24,8 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (apiDomain) setBaseUrl(`https://${apiDomain}`);
+const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
+const clerkProxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
   return (
@@ -58,7 +60,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <ClerkProvider publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || ''} tokenCache={tokenCache}>
+        <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache} proxyUrl={clerkProxyUrl}>
           <ClerkLoaded>
             <QueryClientProvider client={queryClient}>
               <AppProvider>

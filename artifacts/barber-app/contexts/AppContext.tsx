@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   completeBarberAppointment,
   createBarberAppointment,
@@ -65,6 +65,8 @@ type StoreData = {
 
 type AppContextValue = StoreData & {
   ready: boolean;
+  syncError: string | null;
+  retrySync: () => void;
   saveProfile: (profile: ShopProfile) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'clientId'> & { clientId?: string }) => Promise<void>;
   completeAppointment: (id: string, paymentMethod: PaymentMethod) => Promise<void>;
@@ -115,48 +117,9 @@ function toStoreData(remote: Awaited<ReturnType<typeof getBarberShop>>): StoreDa
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded: authLoaded, isSignedIn, userId, getToken } = useAuth();
   const [data, setData] = useState<StoreData>(emptyStore);
-  const [cacheReady, setCacheReady] = useState(false);
   const [ready, setReady] = useState(false);
-  const dataRef = useRef(data);
-  dataRef.current = data;
-
-  useEffect(() => {
-    if (!authLoaded) return;
-    let active = true;
-    setReady(false);
-    setCacheReady(false);
-
-    const loadCache = async () => {
-      if (!isSignedIn || !userId) {
-        if (active) {
-          setData(emptyStore);
-          setCacheReady(true);
-        }
-        return;
-      }
-
-      const scopedStored = await AsyncStorage.getItem(scopedStorageKey(userId));
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      if (!active) return;
-      if (scopedStored) {
-        setData(normalizeStore(JSON.parse(scopedStored) as Partial<StoreData>));
-      } else {
-        setData(emptyStore);
-      }
-      setCacheReady(true);
-    };
-
-    void loadCache().catch(() => {
-      if (active) {
-        setData(emptyStore);
-        setCacheReady(true);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [authLoaded, isSignedIn, userId]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncAttempt, setSyncAttempt] = useState(0);
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
@@ -164,15 +127,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [getToken]);
 
   useEffect(() => {
-    if (!cacheReady || !authLoaded) return;
+    if (!authLoaded) return;
     if (!isSignedIn || !userId) {
+      setData(emptyStore);
+      setSyncError(null);
       setReady(true);
       return;
     }
 
     let active = true;
+    setReady(false);
+    setSyncError(null);
     const sync = async () => {
       try {
+        setAuthTokenGetter(() => getToken());
         const remote = await getBarberShop();
         if (active) {
           const next = toStoreData(remote);
@@ -181,20 +149,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         const status = (error as { status?: number }).status;
-        const localData = dataRef.current;
-        if (status === 404 && localData.profile) {
-          const services = localData.services.length > 0 ? localData.services : starterServices;
-          const remote = await saveBarberShop({
-            profile: localData.profile,
-            services,
-            clients: localData.clients,
-            appointments: localData.appointments,
-          });
-          if (active) {
-            const next = toStoreData(remote);
-            setData(next);
-            void AsyncStorage.setItem(scopedStorageKey(userId), JSON.stringify(next));
-          }
+        if (!active) return;
+        setData(emptyStore);
+        if (status !== 404) {
+          setSyncError(
+            status === 401
+              ? 'Sua sessão não pôde ser validada. Entre novamente para carregar os dados da conta.'
+              : 'Não foi possível carregar os dados salvos no banco. Verifique sua conexão e tente novamente.',
+          );
         }
       } finally {
         if (active) setReady(true);
@@ -204,7 +166,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [authLoaded, cacheReady, isSignedIn, userId]);
+  }, [authLoaded, getToken, isSignedIn, syncAttempt, userId]);
+
+  const retrySync = () => setSyncAttempt((attempt) => attempt + 1);
 
   const persistCache = async (next: StoreData) => {
     setData(next);
@@ -281,8 +245,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, addClient, updateClient, deleteClient, deleteAccount }),
-    [data, ready],
+    () => ({ ...data, ready, syncError, retrySync, saveProfile, addAppointment, completeAppointment, updateAppointment, addService, addClient, updateClient, deleteClient, deleteAccount }),
+    [data, ready, syncError],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

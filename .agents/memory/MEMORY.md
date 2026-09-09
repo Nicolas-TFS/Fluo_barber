@@ -1,1 +1,2 @@
 - [Clerk environments](clerk-environments.md) — preview e app publicado usam ambientes Clerk separados; dados compartilhados exigem backend por usuário dentro do mesmo ambiente.
+- [Dados entre aparelhos](cross-device-data-authority.md) — PostgreSQL é a autoridade após login; cache local nunca pode definir se a conta ou barbearia existe.

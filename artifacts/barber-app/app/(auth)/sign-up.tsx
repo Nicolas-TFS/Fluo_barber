@@ -24,7 +24,7 @@ export default function SignUpScreen() {
     setError('');
     setInfo('');
     try {
-      const result = await signUp.password({ emailAddress: email.trim(), password });
+      const result = await signUp.password({ emailAddress: email.trim().toLowerCase(), password });
       if (result.error) {
         setError(result.error.message || 'Não foi possível criar a conta.');
         return;
@@ -89,7 +89,7 @@ export default function SignUpScreen() {
       <View style={styles.brand}><BrandMark size={56} /><Text style={[styles.brandName, { color: colors.foreground }]}>BARBER APP</Text></View>
       <View style={styles.heading}><Text style={[styles.title, { color: colors.foreground }]}>{verifying ? 'Confirme seu e-mail.' : 'Comece pelo essencial.'}</Text><Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{verifying ? `Digite o código enviado para ${email.trim()}.` : 'Crie sua conta e organize sua barbearia de um jeito mais leve.'}</Text></View>
       <View style={styles.form}>
-        {verifying ? <Field label="Código de verificação" value={code} onChangeText={setCode} placeholder="000000" keyboardType="number-pad" colors={colors} /> : <><Field label="E-mail" value={email} onChangeText={setEmail} placeholder="voce@barbearia.com" keyboardType="email-address" colors={colors} /><Field label="Senha" value={password} onChangeText={setPassword} placeholder="Mínimo de 8 caracteres" secureTextEntry colors={colors} /></>}
+        {verifying ? <Field label="Código de verificação" value={code} onChangeText={setCode} placeholder="000000" keyboardType="number-pad" colors={colors} /> : <><Field label="E-mail" value={email} onChangeText={setEmail} placeholder="voce@barbearia.com" keyboardType="email-address" colors={colors} /><Field label="Senha" value={password} onChangeText={setPassword} placeholder="Mínimo de 8 caracteres" secureTextEntry colors={colors} /><View nativeID="clerk-captcha" /></>}
         {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
         {info ? <Text style={[styles.info, { color: colors.accentForeground }]}>{info}</Text> : null}
         <PrimaryButton label={verifying ? 'Confirmar e-mail' : 'Criar conta'} onPress={verifying ? verify : submit} disabled={verifying ? !code : !email || !password} loading={fetchStatus === 'fetching'} />
