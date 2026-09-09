@@ -30,7 +30,10 @@ import type {
   DeleteAccountRequest,
   DeleteAccountResponse,
   DeleteClientResponse,
+  GetPublicBookingShopParams,
   HealthStatus,
+  PublicBookingRequest,
+  PublicBookingShop,
   SaveShopRequest,
   ShopData,
   UpdateAppointmentRequest,
@@ -288,6 +291,167 @@ export const useSaveBarberShop = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSaveBarberShopMutationOptions(options));
+    }
+
+export const getGetPublicBookingShopUrl = (shopId: string,
+    params: GetPublicBookingShopParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/booking/${shopId}?${stringifiedParams}` : `/api/booking/${shopId}`
+}
+
+/**
+ * @summary Load public booking information and availability
+ */
+export const getPublicBookingShop = async (shopId: string,
+    params: GetPublicBookingShopParams, options?: Parameters<typeof customFetch>[1]): Promise<PublicBookingShop> => {
+
+  return customFetch<PublicBookingShop>(getGetPublicBookingShopUrl(shopId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicBookingShopQueryKey = (shopId: string,
+    params?: GetPublicBookingShopParams,) => {
+    return [
+    `/api/booking/${shopId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPublicBookingShopQueryOptions = <TData = Awaited<ReturnType<typeof getPublicBookingShop>>, TError = ErrorType<void>>(shopId: string,
+    params: GetPublicBookingShopParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicBookingShop>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicBookingShopQueryKey(shopId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicBookingShop>>> = ({ signal }) => getPublicBookingShop(shopId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shopId !== null && shopId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicBookingShop>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicBookingShopQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicBookingShop>>>
+export type GetPublicBookingShopQueryError = ErrorType<void>
+
+
+/**
+ * @summary Load public booking information and availability
+ */
+
+export function useGetPublicBookingShop<TData = Awaited<ReturnType<typeof getPublicBookingShop>>, TError = ErrorType<void>>(
+ shopId: string,
+    params: GetPublicBookingShopParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicBookingShop>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicBookingShopQueryOptions(shopId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePublicBookingUrl = (shopId: string,) => {
+
+
+
+
+  return `/api/booking/${shopId}`
+}
+
+/**
+ * @summary Create an appointment from the public booking page
+ */
+export const createPublicBooking = async (shopId: string,
+    publicBookingRequest: PublicBookingRequest, options?: Parameters<typeof customFetch>[1]): Promise<BarberAppointment> => {
+
+  return customFetch<BarberAppointment>(getCreatePublicBookingUrl(shopId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publicBookingRequest)
+  }
+);}
+
+
+
+
+
+export const getCreatePublicBookingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicBooking>>, TError,{shopId: string;data: BodyType<PublicBookingRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPublicBooking>>, TError,{shopId: string;data: BodyType<PublicBookingRequest>}, TContext> => {
+
+const mutationKey = ['createPublicBooking'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPublicBooking>>, {shopId: string;data: BodyType<PublicBookingRequest>}> = (props) => {
+          const {shopId,data} = props ?? {};
+
+          return  createPublicBooking(shopId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePublicBookingMutationResult = NonNullable<Awaited<ReturnType<typeof createPublicBooking>>>
+    export type CreatePublicBookingMutationBody = BodyType<PublicBookingRequest>
+    export type CreatePublicBookingMutationError = ErrorType<void>
+
+    /**
+ * @summary Create an appointment from the public booking page
+ */
+export const useCreatePublicBooking = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicBooking>>, TError,{shopId: string;data: BodyType<PublicBookingRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPublicBooking>>,
+        TError,
+        {shopId: string;data: BodyType<PublicBookingRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePublicBookingMutationOptions(options));
     }
 
 export const getGetBarberAppointmentsUrl = () => {

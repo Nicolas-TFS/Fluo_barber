@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
@@ -22,11 +22,17 @@ export default function AgendaScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { appointments, services, completeAppointment } = useShopStore();
+  const { appointments, services, completeAppointment, retrySync } = useShopStore();
   const today = formatDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [appointmentToFinish, setAppointmentToFinish] = useState<Appointment | null>(null);
   const [finishing, setFinishing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      retrySync();
+    }, [retrySync]),
+  );
 
   const dates = useMemo(
     () =>

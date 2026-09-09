@@ -5,7 +5,7 @@ import { Appointment, PaymentMethod, useShopStore } from '@/contexts/AppContext'
 import { useColors } from '@/hooks/useColors';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -45,6 +45,10 @@ export default function NewAppointmentScreen() {
   const [clientSearch, setClientSearch] = useState('');
   const [scheduleError, setScheduleError] = useState('');
   const [showAvailableTimes, setShowAvailableTimes] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const bookingUrl = profile?.bookingId && process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/book/${profile.bookingId}`
+    : '';
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedClient = clients.find((client) => client.id === clientId);
@@ -144,6 +148,17 @@ export default function NewAppointmentScreen() {
     setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   };
 
+  const copyBookingLink = async () => {
+    if (!bookingUrl) return;
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(bookingUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+      return;
+    }
+    await Share.share({ title: 'Agendar horário', message: `Agende seu horário: ${bookingUrl}`, url: bookingUrl });
+  };
+
   return (
     <>
       <Stack.Screen
@@ -163,6 +178,22 @@ export default function NewAppointmentScreen() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {id ? 'Ajuste o lançamento e mantenha sua agenda e seu financeiro corretos.' : 'Escolha o dia e deixe o atendimento pronto na sua agenda.'}
         </Text>
+
+        {!id && bookingUrl ? (
+          <View style={[styles.bookingLinkCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.bookingLinkIcon, { backgroundColor: colors.accent }]}>
+              <Feather name="link" size={19} color={colors.primary} />
+            </View>
+            <View style={styles.bookingLinkCopy}>
+              <Text style={[styles.bookingLinkTitle, { color: colors.foreground }]}>Link para o cliente</Text>
+              <Text style={[styles.bookingLinkText, { color: colors.mutedForeground }]} numberOfLines={1}>{bookingUrl}</Text>
+            </View>
+            <Pressable onPress={copyBookingLink} style={[styles.copyButton, { backgroundColor: colors.secondary }]}>
+              <Feather name={linkCopied ? 'check' : 'copy'} size={16} color={colors.primary} />
+              <Text style={[styles.copyButtonText, { color: colors.primary }]}>{linkCopied ? 'Copiado' : 'Copiar'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={[styles.dateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.dateCardHeader}>
@@ -423,4 +454,11 @@ const styles = StyleSheet.create({
   paymentOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -7, marginBottom: 8 },
   paymentOption: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 },
   paymentText: { fontSize: 12, fontWeight: '700' },
+  bookingLinkCard: { borderWidth: 1, borderRadius: 18, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  bookingLinkIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  bookingLinkCopy: { flex: 1, gap: 4 },
+  bookingLinkTitle: { fontSize: 13, fontWeight: '800' },
+  bookingLinkText: { fontSize: 10 },
+  copyButton: { minHeight: 38, borderRadius: 11, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  copyButtonText: { fontSize: 11, fontWeight: '800' },
 });

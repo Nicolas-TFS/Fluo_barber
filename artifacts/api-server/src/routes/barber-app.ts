@@ -13,6 +13,7 @@ type BarberProfile = {
   address: string;
   city: string;
   profileImage: string;
+  bookingId?: string;
   openingTime: string;
   closingTime: string;
 };
@@ -127,6 +128,7 @@ async function buildShopData(clerkUserId: string): Promise<ShopData | null> {
       address: shop.address,
       city: shop.city,
       profileImage: shop.profileImage,
+      bookingId: shop.id,
       openingTime: shop.openingTime,
       closingTime: shop.closingTime,
     },
@@ -143,6 +145,88 @@ router.get("/shop", requireAuth, async (_req, res) => {
     return;
   }
   res.json(data);
+});
+
+router.get("/booking/:shopId", async (req, res) => {
+  const shopId = String(req.params.shopId);
+  const date = typeof req.query.date === "string" ? req.query.date : "";
+  if (!isText(date)) {
+    res.status(400).json({ error: "Date is required" });
+    return;
+  }
+  const shop = await db.select().from(barberShops).where(eq(barberShops.id, shopId)).limit(1).then((rows) => rows[0]);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+  const [services, appointments] = await Promise.all([
+    db.select().from(barberServices).where(and(eq(barberServices.shopId, shopId), eq(barberServices.active, true))),
+    db.select({ time: barberAppointments.time }).from(barberAppointments).where(and(
+      eq(barberAppointments.shopId, shopId),
+      eq(barberAppointments.date, date),
+      eq(barberAppointments.status, "scheduled"),
+    )),
+  ]);
+  const toMinutes = (value: string) => {
+    const [hours, minutes] = value.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+  const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  const occupied = new Set(appointments.map((appointment) => appointment.time));
+  const availableTimes: string[] = [];
+  for (let minutes = toMinutes(shop.openingTime); minutes < toMinutes(shop.closingTime); minutes += 30) {
+    const time = toTime(minutes);
+    if (!occupied.has(time)) availableTimes.push(time);
+  }
+  res.json({
+    shopName: shop.shopName,
+    address: shop.address,
+    city: shop.city,
+    profileImage: shop.profileImage,
+    services,
+    availableTimes,
+  });
+});
+
+router.post("/booking/:shopId", async (req, res) => {
+  const shopId = String(req.params.shopId);
+  const { clientName, clientPhone, serviceId, date, time } = req.body as Record<string, unknown>;
+  if (!isText(clientName) || !isText(clientPhone) || !isText(serviceId) || !isText(date) || !isText(time)) {
+    res.status(400).json({ error: "Invalid booking data" });
+    return;
+  }
+  const service = await db.select().from(barberServices).where(and(
+    eq(barberServices.id, serviceId),
+    eq(barberServices.shopId, shopId),
+    eq(barberServices.active, true),
+  )).limit(1).then((rows) => rows[0]);
+  if (!service) {
+    res.status(404).json({ error: "Service not found" });
+    return;
+  }
+  const conflict = await db.select({ id: barberAppointments.id }).from(barberAppointments).where(and(
+    eq(barberAppointments.shopId, shopId),
+    eq(barberAppointments.date, date),
+    eq(barberAppointments.time, time),
+    eq(barberAppointments.status, "scheduled"),
+  )).limit(1);
+  if (conflict[0]) {
+    res.status(409).json({ error: "This time is already booked" });
+    return;
+  }
+  const inserted = await db.insert(barberAppointments).values({
+    id: randomUUID(),
+    shopId,
+    clientId: null,
+    clientName: clientName.trim(),
+    clientPhone: clientPhone.trim(),
+    serviceId,
+    amount: service.price,
+    date: date.trim(),
+    time: time.trim(),
+    status: "scheduled",
+  }).returning();
+  res.status(201).json(serializeAppointment(inserted[0]));
 });
 
 router.put("/shop", requireAuth, async (req, res) => {

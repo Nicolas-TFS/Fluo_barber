@@ -1,3 +1,4 @@
 - [Clerk environments](clerk-environments.md) — preview e app publicado usam ambientes Clerk separados; dados compartilhados exigem backend por usuário dentro do mesmo ambiente.
 - [Dados entre aparelhos](cross-device-data-authority.md) — PostgreSQL é a autoridade após login; cache local nunca pode definir se a conta ou barbearia existe.
 - [IDs multi-barbearia](multi-shop-identifiers.md) — dados iniciais de cada barbearia precisam de IDs globais exclusivos, preservando vínculos ao importar conjuntos relacionados.
+- [Rotas públicas no Expo](public-expo-routes.md) — páginas para clientes sem conta devem renderizar fora dos providers que aguardam o carregamento do Clerk.

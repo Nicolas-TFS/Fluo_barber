@@ -5,7 +5,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppProvider } from '@/contexts/AppContext';
-import { ClerkProvider, ClerkLoaded } from '@clerk/expo';
+import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import {
   Inter_400Regular,
@@ -14,7 +14,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
 
@@ -38,11 +38,13 @@ function RootLayoutNav() {
       <Stack.Screen name="clients/new" options={{ presentation: 'modal', headerShown: true }} />
       <Stack.Screen name="finance" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="book/[shopId]" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -58,21 +60,35 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
+  if (pathname.startsWith('/book/')) {
+    return (
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
         <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache} proxyUrl={clerkProxyUrl}>
-          <ClerkLoaded>
-            <QueryClientProvider client={queryClient}>
-              <AppProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <RootLayoutNav />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </AppProvider>
-            </QueryClientProvider>
-          </ClerkLoaded>
+          <QueryClientProvider client={queryClient}>
+            <AppProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </AppProvider>
+          </QueryClientProvider>
         </ClerkProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

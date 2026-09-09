@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   completeBarberAppointment,
   createBarberAppointment,
@@ -22,6 +22,7 @@ export type ShopProfile = {
   address: string;
   city: string;
   profileImage: string;
+  bookingId?: string;
   openingTime: string;
   closingTime: string;
 };
@@ -173,7 +174,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authLoaded, isSignedIn, syncAttempt, userId]);
 
-  const retrySync = () => setSyncAttempt((attempt) => attempt + 1);
+  const retrySync = useCallback(() => setSyncAttempt((attempt) => attempt + 1), []);
 
   const persistCache = async (next: StoreData) => {
     setData(next);
