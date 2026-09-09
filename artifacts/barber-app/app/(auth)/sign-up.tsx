@@ -24,6 +24,10 @@ export default function SignUpScreen() {
   const submit = async () => {
     setError('');
     setInfo('');
+    if (password.length !== 8) {
+      setError('A senha deve ter exatamente 8 caracteres.');
+      return;
+    }
     try {
       const result = await signUp.password({ emailAddress: email.trim().toLowerCase(), password });
       if (result.error) {
@@ -92,10 +96,10 @@ export default function SignUpScreen() {
       <View style={styles.brand}><BrandMark size={56} /><Text style={[styles.brandName, { color: colors.foreground }]}>BARBER APP</Text></View>
       <View style={styles.heading}><Text style={[styles.title, { color: colors.foreground }]}>{verifying ? 'Confirme seu e-mail.' : 'Comece pelo essencial.'}</Text><Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{verifying ? `Digite o código enviado para ${email.trim()}.` : 'Crie sua conta e organize sua barbearia de um jeito mais leve.'}</Text></View>
       <View style={styles.form}>
-        {verifying ? <Field label="Código de verificação" value={code} onChangeText={setCode} placeholder="000000" keyboardType="number-pad" colors={colors} /> : <><Field label="E-mail" value={email} onChangeText={setEmail} placeholder="voce@barbearia.com" keyboardType="email-address" colors={colors} /><Field label="Senha" value={password} onChangeText={setPassword} placeholder="Mínimo de 8 caracteres" secureTextEntry colors={colors} /><View nativeID="clerk-captcha" /></>}
+        {verifying ? <Field label="Código de verificação" value={code} onChangeText={setCode} placeholder="000000" keyboardType="number-pad" colors={colors} /> : <><Field label="E-mail" value={email} onChangeText={setEmail} placeholder="voce@barbearia.com" keyboardType="email-address" colors={colors} /><Field label="Senha" value={password} onChangeText={setPassword} placeholder="Exatamente 8 caracteres" secureTextEntry maxLength={8} colors={colors} /><Text style={[styles.passwordHint, { color: colors.mutedForeground }]}>{password.length}/8 caracteres</Text><View nativeID="clerk-captcha" /></>}
         {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
         {info ? <Text style={[styles.info, { color: colors.accentForeground }]}>{info}</Text> : null}
-        <PrimaryButton label={verifying ? 'Confirmar e-mail' : 'Criar conta'} onPress={verifying ? verify : submit} disabled={verifying ? !code : !email || !password} loading={fetchStatus === 'fetching'} />
+        <PrimaryButton label={verifying ? 'Confirmar e-mail' : 'Criar conta'} onPress={verifying ? verify : submit} disabled={verifying ? !code : !email || password.length !== 8} loading={fetchStatus === 'fetching'} />
         {verifying ? <View style={styles.verificationActions}><Pressable onPress={resend} disabled={resending}><Text style={[styles.action, { color: colors.primary }]}>{resending ? 'Enviando...' : 'Reenviar código'}</Text></Pressable><Pressable onPress={startOver}><Text style={[styles.action, { color: colors.mutedForeground }]}>Usar outro e-mail</Text></Pressable></View> : null}
       </View>
       <View style={styles.footer}><Text style={[styles.footerText, { color: colors.mutedForeground }]}>Já tem uma conta?</Text><Pressable onPress={() => router.push('/(auth)/sign-in')}><Text style={[styles.link, { color: colors.primary }]}>Entrar</Text></Pressable></View>
@@ -120,6 +124,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 54, borderWidth: 1, borderRadius: 15, paddingHorizontal: 16, fontSize: 15 },
   error: { fontSize: 13, lineHeight: 18 },
   info: { fontSize: 13, lineHeight: 18 },
+  passwordHint: { fontSize: 11, marginTop: -10 },
   verificationActions: { alignItems: 'center', gap: 14, paddingTop: 2 },
   action: { fontSize: 13, fontWeight: '700' },
   footer: { flexDirection: 'row', justifyContent: 'center', gap: 5 },
