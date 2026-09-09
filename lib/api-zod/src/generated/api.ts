@@ -181,3 +181,34 @@ export const CompleteBarberAppointmentResponse = zod.object({
 })
 
 
+/**
+ * @summary Update an appointment
+ */
+export const UpdateBarberAppointmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateBarberAppointmentBody = zod.object({
+  "clientName": zod.string().optional(),
+  "clientPhone": zod.string().optional(),
+  "serviceId": zod.string().optional(),
+  "amount": zod.number().int().optional(),
+  "date": zod.string().optional(),
+  "time": zod.string().optional(),
+  "paymentMethod": zod.enum(['pix', 'cash', 'credit_card', 'debit_card']).optional()
+})
+
+export const UpdateBarberAppointmentResponse = zod.object({
+  "id": zod.string(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "serviceId": zod.string(),
+  "amount": zod.number().int(),
+  "date": zod.string(),
+  "time": zod.string(),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "paymentMethod": zod.enum(['pix', 'cash', 'credit_card', 'debit_card']).optional(),
+  "completedAt": zod.string().nullish()
+})
+
+

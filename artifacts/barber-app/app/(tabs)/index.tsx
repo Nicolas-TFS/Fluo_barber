@@ -14,10 +14,15 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
-  const { profile, appointments } = useShopStore();
+  const { profile, appointments, services } = useShopStore();
   const today = new Date().toISOString().slice(0, 10);
   const todayAppointments = appointments.filter((item) => item.date === today && item.status !== 'cancelled');
-  const nextAppointment = todayAppointments.sort((a, b) => a.time.localeCompare(b.time))[0];
+  const nextAppointment = todayAppointments
+    .filter((item) => item.status === 'scheduled')
+    .sort((a, b) => a.time.localeCompare(b.time))[0];
+  const todayRevenue = todayAppointments
+    .filter((item) => item.status === 'completed')
+    .reduce((total, appointment) => total + (appointment.amount || services.find((service) => service.id === appointment.serviceId)?.price || 0), 0);
   const firstName = profile?.ownerName?.split(' ')[0] || user?.firstName || 'barbeiro';
 
   return (
@@ -25,7 +30,7 @@ export default function DashboardScreen() {
       <ScreenHeader eyebrow="Hoje" title={`Olá, ${firstName}.`} trailing={<View style={[styles.avatar, { backgroundColor: colors.accent }]}><Text style={[styles.avatarText, { color: colors.accentForeground }]}>{firstName.slice(0, 1).toUpperCase()}</Text></View>} />
       <Text style={[styles.date, { color: colors.mutedForeground }]}>{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</Text>
       <View style={styles.statsGrid}>
-        <Stat icon="trending-up" label="Faturamento" value="R$ 0,00" colors={colors} />
+        <Stat icon="trending-up" label="Faturamento" value={`R$ ${todayRevenue.toFixed(2).replace('.', ',')}`} colors={colors} />
         <Stat icon="calendar" label="Atendimentos" value={String(todayAppointments.length)} colors={colors} />
         <Stat icon="users" label="Clientes" value="0" colors={colors} />
         <Stat icon="clock" label="Próximo" value={nextAppointment?.time || '—'} colors={colors} />

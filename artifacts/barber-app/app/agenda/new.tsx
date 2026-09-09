@@ -1,10 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { useShopStore } from '@/contexts/AppContext';
+import { Appointment, PaymentMethod, useShopStore } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
-import { Stack, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,19 +15,30 @@ const monthTitle = (date: Date) =>
   date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, (letter) => letter.toUpperCase());
 const longDate = (dateKey: string) =>
   dateFromKey(dateKey).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+const paymentLabels: Record<PaymentMethod, string> = {
+  pix: 'Pix',
+  cash: 'Dinheiro',
+  credit_card: 'Crédito',
+  debit_card: 'Débito',
+};
 
 export default function NewAppointmentScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { services, addAppointment } = useShopStore();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { services, appointments, addAppointment, updateAppointment } = useShopStore();
+  const existingAppointment = appointments.find((appointment) => appointment.id === id);
   const today = formatDateKey(new Date());
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [time, setTime] = useState('09:00');
   const [serviceId, setServiceId] = useState(services[0]?.id || '');
+  const [amount, setAmount] = useState(services[0]?.price ? String(services[0].price) : '');
   const [selectedDate, setSelectedDate] = useState(today);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>();
+  const [loadedAppointmentId, setLoadedAppointmentId] = useState<string>();
   const [saving, setSaving] = useState(false);
 
   const selectedService = services.find((service) => service.id === serviceId);
@@ -39,19 +50,49 @@ export default function NewAppointmentScreen() {
     return [...Array.from({ length: leadingDays }, () => null), ...Array.from({ length: totalDays }, (_, index) => index + 1)];
   }, [calendarMonth]);
 
+  useEffect(() => {
+    if (!id || !existingAppointment || loadedAppointmentId === id) return;
+    setClientName(existingAppointment.clientName);
+    setClientPhone(existingAppointment.clientPhone);
+    setTime(existingAppointment.time);
+    setServiceId(existingAppointment.serviceId);
+    setAmount(String(existingAppointment.amount));
+    setSelectedDate(existingAppointment.date);
+    setCalendarMonth(new Date(`${existingAppointment.date}T12:00:00`));
+    setPaymentMethod(existingAppointment.paymentMethod);
+    setLoadedAppointmentId(id);
+  }, [existingAppointment, id, loadedAppointmentId]);
+
   const save = async () => {
     if (!clientName.trim() || !serviceId || !selectedService) return;
+    const normalizedAmount = Number(amount.replace(',', '.'));
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount < 0) return;
     setSaving(true);
-    await addAppointment({
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
-      serviceId,
-      amount: selectedService.price,
-      date: selectedDate,
-      time,
-    });
-    setSaving(false);
-    router.back();
+    try {
+      if (id) {
+        await updateAppointment(id, {
+          clientName: clientName.trim(),
+          clientPhone: clientPhone.trim(),
+          serviceId,
+          amount: Math.round(normalizedAmount),
+          date: selectedDate,
+          time,
+          ...(existingAppointment?.status === 'completed' && paymentMethod ? { paymentMethod } : {}),
+        });
+      } else {
+        await addAppointment({
+          clientName: clientName.trim(),
+          clientPhone: clientPhone.trim(),
+          serviceId,
+          amount: Math.round(normalizedAmount),
+          date: selectedDate,
+          time,
+        });
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const changeMonth = (offset: number) => {
@@ -62,7 +103,7 @@ export default function NewAppointmentScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Novo agendamento',
+          title: id ? 'Alterar atendimento' : 'Novo agendamento',
           headerShown: true,
           headerTintColor: colors.foreground,
           headerStyle: { backgroundColor: colors.background },
@@ -73,9 +114,9 @@ export default function NewAppointmentScreen() {
         contentContainerStyle={[styles.content, { paddingTop: 18, paddingBottom: insets.bottom + 30 }]}
         bottomOffset={18}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Reserve um horário.</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{id ? 'Corrija os dados.' : 'Reserve um horário.'}</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Escolha o dia e deixe o atendimento pronto na sua agenda.
+          {id ? 'Ajuste o lançamento e mantenha sua agenda e seu financeiro corretos.' : 'Escolha o dia e deixe o atendimento pronto na sua agenda.'}
         </Text>
 
         <View style={[styles.dateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -126,12 +167,16 @@ export default function NewAppointmentScreen() {
         <Field label="Nome do cliente" value={clientName} onChangeText={setClientName} placeholder="Nome completo" colors={colors} />
         <Field label="Telefone" value={clientPhone} onChangeText={setClientPhone} placeholder="(11) 99999-9999" keyboardType="phone-pad" colors={colors} />
         <Field label="Horário" value={time} onChangeText={setTime} placeholder="09:00" colors={colors} />
+        <Field label="Valor cobrado" value={amount} onChangeText={setAmount} placeholder="35" keyboardType="decimal-pad" colors={colors} />
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Serviço</Text>
         <View style={styles.services}>
           {services.filter((item) => item.active).map((item) => (
             <Pressable
               key={item.id}
-              onPress={() => setServiceId(item.id)}
+              onPress={() => {
+                setServiceId(item.id);
+                if (!id) setAmount(String(item.price));
+              }}
               style={[styles.service, { backgroundColor: serviceId === item.id ? colors.accent : colors.input, borderColor: serviceId === item.id ? colors.primary : colors.border }]}
             >
               <Text style={[styles.serviceName, { color: colors.foreground }]}>{item.name}</Text>
@@ -139,7 +184,26 @@ export default function NewAppointmentScreen() {
             </Pressable>
           ))}
         </View>
-        <PrimaryButton label="Salvar agendamento" onPress={save} disabled={!clientName.trim() || !serviceId} loading={saving} />
+        {existingAppointment?.status === 'completed' ? (
+          <>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Forma de pagamento</Text>
+            <View style={styles.paymentOptions}>
+              {(Object.keys(paymentLabels) as PaymentMethod[]).map((method) => (
+                <Pressable
+                  key={method}
+                  onPress={() => setPaymentMethod(method)}
+                  style={[
+                    styles.paymentOption,
+                    { backgroundColor: paymentMethod === method ? colors.accent : colors.input, borderColor: paymentMethod === method ? colors.primary : colors.border },
+                  ]}
+                >
+                  <Text style={[styles.paymentText, { color: colors.foreground }]}>{paymentLabels[method]}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+        <PrimaryButton label={id ? 'Salvar alterações' : 'Salvar agendamento'} onPress={save} disabled={!clientName.trim() || !serviceId || !amount} loading={saving} />
       </KeyboardAwareScrollViewCompat>
     </>
   );
@@ -176,4 +240,7 @@ const styles = StyleSheet.create({
   service: { borderWidth: 1, borderRadius: 15, padding: 14, gap: 5 },
   serviceName: { fontSize: 14, fontWeight: '700' },
   serviceMeta: { fontSize: 12 },
+  paymentOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -7, marginBottom: 8 },
+  paymentOption: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 },
+  paymentText: { fontSize: 12, fontWeight: '700' },
 });

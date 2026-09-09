@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, barberAppointments, barberServices, barberShops } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
@@ -281,6 +281,97 @@ router.post("/appointments/:id/complete", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  res.json(serializeAppointment(updated[0]));
+});
+
+router.patch("/appointments/:id", requireAuth, async (req, res) => {
+  const body = req.body as {
+    clientName?: unknown;
+    clientPhone?: unknown;
+    serviceId?: unknown;
+    amount?: unknown;
+    date?: unknown;
+    time?: unknown;
+    paymentMethod?: unknown;
+  };
+  const shop = await findShop(res.locals.clerkUserId);
+  if (!shop) {
+    res.status(404).json({ error: "Barbershop not found" });
+    return;
+  }
+
+  const appointmentId = String(req.params.id);
+  const current = await db
+    .select()
+    .from(barberAppointments)
+    .where(and(eq(barberAppointments.id, appointmentId), eq(barberAppointments.shopId, shop.id)))
+    .limit(1);
+  if (!current[0]) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+
+  const clientName = body.clientName ?? current[0].clientName;
+  const clientPhone = body.clientPhone ?? current[0].clientPhone;
+  const serviceId = body.serviceId ?? current[0].serviceId;
+  const amount = body.amount ?? current[0].amount;
+  const date = body.date ?? current[0].date;
+  const time = body.time ?? current[0].time;
+  const paymentMethod = body.paymentMethod ?? current[0].paymentMethod;
+  if (
+    !isText(clientName) ||
+    typeof clientPhone !== "string" ||
+    !isText(serviceId) ||
+    !Number.isInteger(amount) ||
+    !isText(date) ||
+    !isText(time) ||
+    (paymentMethod !== null && (typeof paymentMethod !== "string" || !paymentMethods.has(paymentMethod)))
+  ) {
+    res.status(400).json({ error: "Invalid appointment data" });
+    return;
+  }
+
+  const service = await db
+    .select({ id: barberServices.id })
+    .from(barberServices)
+    .where(and(eq(barberServices.id, serviceId), eq(barberServices.shopId, shop.id)))
+    .limit(1);
+  if (!service[0]) {
+    res.status(400).json({ error: "Service not found" });
+    return;
+  }
+
+  const conflict = await db
+    .select({ id: barberAppointments.id })
+    .from(barberAppointments)
+    .where(
+      and(
+        eq(barberAppointments.shopId, shop.id),
+        eq(barberAppointments.date, date),
+        eq(barberAppointments.time, time),
+        eq(barberAppointments.status, "scheduled"),
+        ne(barberAppointments.id, appointmentId),
+      ),
+    )
+    .limit(1);
+  if (conflict[0]) {
+    res.status(409).json({ error: "This time is already booked" });
+    return;
+  }
+
+  const updated = await db
+    .update(barberAppointments)
+    .set({
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim(),
+      serviceId,
+      amount: amount as number,
+      date: date.trim(),
+      time: time.trim(),
+      paymentMethod,
+    })
+    .where(and(eq(barberAppointments.id, appointmentId), eq(barberAppointments.shopId, shop.id)))
+    .returning();
   res.json(serializeAppointment(updated[0]));
 });
 

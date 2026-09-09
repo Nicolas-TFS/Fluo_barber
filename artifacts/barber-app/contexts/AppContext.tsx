@@ -7,6 +7,7 @@ import {
   getBarberShop,
   saveBarberShop,
   setAuthTokenGetter,
+  updateBarberAppointment,
 } from '@workspace/api-client-react';
 
 export type ShopProfile = {
@@ -40,6 +41,8 @@ export type Appointment = {
   completedAt?: string;
 };
 
+export type AppointmentUpdate = Partial<Pick<Appointment, 'clientName' | 'clientPhone' | 'serviceId' | 'amount' | 'date' | 'time' | 'paymentMethod'>>;
+
 type StoreData = {
   profile: ShopProfile | null;
   services: Service[];
@@ -51,6 +54,7 @@ type AppContextValue = StoreData & {
   saveProfile: (profile: ShopProfile) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
   completeAppointment: (id: string, paymentMethod: PaymentMethod) => Promise<void>;
+  updateAppointment: (id: string, update: AppointmentUpdate) => Promise<void>;
 };
 
 const STORAGE_KEY = 'barber-app-store-v1';
@@ -229,8 +233,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const updateAppointment = async (id: string, update: AppointmentUpdate) => {
+    const updated = await updateBarberAppointment(id, update);
+    await persistCache({
+      ...data,
+      appointments: data.appointments.map((appointment) =>
+        appointment.id === id ? { ...updated, completedAt: updated.completedAt ?? undefined } : appointment,
+      ),
+    });
+  };
+
   const value = useMemo(
-    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment }),
+    () => ({ ...data, ready, saveProfile, addAppointment, completeAppointment, updateAppointment }),
     [data, ready],
   );
 

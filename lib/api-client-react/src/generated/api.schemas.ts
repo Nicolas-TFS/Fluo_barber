@@ -82,3 +82,13 @@ export interface CompleteAppointmentRequest {
   paymentMethod: PaymentMethod;
 }
 
+export interface UpdateAppointmentRequest {
+  clientName?: string;
+  clientPhone?: string;
+  serviceId?: string;
+  amount?: number;
+  date?: string;
+  time?: string;
+  paymentMethod?: PaymentMethod;
+}
+

@@ -25,7 +25,8 @@ import type {
   CreateAppointmentRequest,
   HealthStatus,
   SaveShopRequest,
-  ShopData
+  ShopData,
+  UpdateAppointmentRequest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -499,5 +500,77 @@ export const useCompleteBarberAppointment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCompleteBarberAppointmentMutationOptions(options));
+    }
+
+export const getUpdateBarberAppointmentUrl = (id: string,) => {
+
+
+
+
+  return `/api/appointments/${id}`
+}
+
+/**
+ * @summary Update an appointment
+ */
+export const updateBarberAppointment = async (id: string,
+    updateAppointmentRequest: UpdateAppointmentRequest, options?: Parameters<typeof customFetch>[1]): Promise<BarberAppointment> => {
+
+  return customFetch<BarberAppointment>(getUpdateBarberAppointmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateAppointmentRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateBarberAppointmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBarberAppointment>>, TError,{id: string;data: BodyType<UpdateAppointmentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBarberAppointment>>, TError,{id: string;data: BodyType<UpdateAppointmentRequest>}, TContext> => {
+
+const mutationKey = ['updateBarberAppointment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBarberAppointment>>, {id: string;data: BodyType<UpdateAppointmentRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBarberAppointment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBarberAppointmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateBarberAppointment>>>
+    export type UpdateBarberAppointmentMutationBody = BodyType<UpdateAppointmentRequest>
+    export type UpdateBarberAppointmentMutationError = ErrorType<void>
+
+    /**
+ * @summary Update an appointment
+ */
+export const useUpdateBarberAppointment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBarberAppointment>>, TError,{id: string;data: BodyType<UpdateAppointmentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBarberAppointment>>,
+        TError,
+        {id: string;data: BodyType<UpdateAppointmentRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateBarberAppointmentMutationOptions(options));
     }
 
