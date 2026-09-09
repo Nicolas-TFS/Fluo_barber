@@ -1,20 +1,47 @@
-// Export your models here. Add one export per file
-// export * from "./posts";
-//
-// Each model/table should ideally be split into different files.
-// Each model/table should define a Drizzle table, insert schema, and types:
-//
-//   import { pgTable, text, serial } from "drizzle-orm/pg-core";
-//   import { createInsertSchema } from "drizzle-zod";
-//   import { z } from "zod/v4";
-//
-//   export const postsTable = pgTable("posts", {
-//     id: serial("id").primaryKey(),
-//     title: text("title").notNull(),
-//   });
-//
-//   export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
-//   export type InsertPost = z.infer<typeof insertPostSchema>;
-//   export type Post = typeof postsTable.$inferSelect;
+import { boolean, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
-export {}
+export const barberShops = pgTable(
+  "barber_shops",
+  {
+    id: text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    shopName: text("shop_name").notNull(),
+    ownerName: text("owner_name").notNull(),
+    phone: text("phone").notNull().default(""),
+    openingTime: text("opening_time").notNull(),
+    closingTime: text("closing_time").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    clerkUserIdUnique: uniqueIndex("barber_shops_clerk_user_id_unique").on(table.clerkUserId),
+  }),
+);
+
+export const barberServices = pgTable("barber_services", {
+  id: text("id").primaryKey(),
+  shopId: text("shop_id").notNull(),
+  name: text("name").notNull(),
+  duration: integer("duration").notNull(),
+  price: integer("price").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const barberAppointments = pgTable("barber_appointments", {
+  id: text("id").primaryKey(),
+  shopId: text("shop_id").notNull(),
+  clientName: text("client_name").notNull(),
+  clientPhone: text("client_phone").notNull().default(""),
+  serviceId: text("service_id").notNull(),
+  amount: integer("amount").notNull(),
+  date: text("date").notNull(),
+  time: text("time").notNull(),
+  status: text("status").notNull().default("scheduled"),
+  paymentMethod: text("payment_method"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type BarberShop = typeof barberShops.$inferSelect;
+export type BarberService = typeof barberServices.$inferSelect;
+export type BarberAppointment = typeof barberAppointments.$inferSelect;
