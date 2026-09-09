@@ -15,7 +15,8 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useUser();
   const { profile, appointments, services, clients } = useShopStore();
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const todayAppointments = appointments.filter((item) => item.date === today && item.status !== 'cancelled');
   const nextAppointment = todayAppointments
     .filter((item) => item.status === 'scheduled')
