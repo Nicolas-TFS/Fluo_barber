@@ -37,6 +37,7 @@ function RootLayoutNav() {
       <Stack.Screen name="agenda/new" options={{ presentation: 'modal', headerShown: true }} />
       <Stack.Screen name="clients/new" options={{ presentation: 'modal', headerShown: true }} />
       <Stack.Screen name="finance" options={{ headerShown: false }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
     </Stack>
   );
 }

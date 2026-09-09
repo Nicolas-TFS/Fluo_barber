@@ -10,6 +10,9 @@ type BarberProfile = {
   shopName: string;
   ownerName: string;
   phone: string;
+  address: string;
+  city: string;
+  profileImage: string;
   openingTime: string;
   closingTime: string;
 };
@@ -59,7 +62,10 @@ function isText(value: unknown): value is string {
 
 function isProfile(value: unknown): value is BarberProfile {
   if (!isRecord(value)) return false;
-  return ["shopName", "ownerName", "phone", "openingTime", "closingTime"].every((key) => isText(value[key]));
+  return (
+    ["shopName", "ownerName", "openingTime", "closingTime"].every((key) => isText(value[key])) &&
+    ["phone", "address", "city", "profileImage"].every((key) => typeof value[key] === "string")
+  );
 }
 
 function isService(value: unknown): value is BarberService {
@@ -118,6 +124,9 @@ async function buildShopData(clerkUserId: string): Promise<ShopData | null> {
       shopName: shop.shopName,
       ownerName: shop.ownerName,
       phone: shop.phone,
+      address: shop.address,
+      city: shop.city,
+      profileImage: shop.profileImage,
       openingTime: shop.openingTime,
       closingTime: shop.closingTime,
     },
@@ -156,6 +165,9 @@ router.put("/shop", requireAuth, async (req, res) => {
           shopName: profile.shopName.trim(),
           ownerName: profile.ownerName.trim(),
           phone: profile.phone.trim(),
+          address: profile.address.trim(),
+          city: profile.city.trim(),
+          profileImage: profile.profileImage,
           openingTime: profile.openingTime.trim(),
           closingTime: profile.closingTime.trim(),
           updatedAt: new Date(),
@@ -170,6 +182,9 @@ router.put("/shop", requireAuth, async (req, res) => {
       shopName: profile.shopName.trim(),
       ownerName: profile.ownerName.trim(),
       phone: profile.phone.trim(),
+      address: profile.address.trim(),
+      city: profile.city.trim(),
+      profileImage: profile.profileImage,
       openingTime: profile.openingTime.trim(),
       closingTime: profile.closingTime.trim(),
     });

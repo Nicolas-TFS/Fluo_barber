@@ -26,7 +26,7 @@ export default function SetupScreen() {
     setSaving(true);
     setError('');
     try {
-      await saveProfile({ shopName: shopName.trim(), ownerName: ownerName.trim(), phone: phone.trim(), openingTime, closingTime });
+      await saveProfile({ shopName: shopName.trim(), ownerName: ownerName.trim(), phone: phone.trim(), address: '', city: '', profileImage: '', openingTime, closingTime });
       router.replace('/(tabs)');
     } catch {
       setError('Não foi possível salvar sua barbearia no banco. Tente novamente.');

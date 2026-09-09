@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useClerk } from '@clerk/expo';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -101,13 +102,15 @@ export default function MoreScreen() {
         contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 94 }}
       >
         <ScreenHeader eyebrow="Configurações" title="Mais do seu negócio." />
-        <View style={[styles.profile, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <BrandMark size={48} />
+        <Pressable onPress={() => router.push('/profile')} style={({ pressed }) => [styles.profile, { backgroundColor: colors.card, borderColor: colors.border }, pressed && styles.pressed]}>
+          {profile?.profileImage ? <Image source={{ uri: profile.profileImage }} style={styles.profileImage} contentFit="cover" /> : <BrandMark size={48} />}
           <View style={styles.profileCopy}>
             <Text style={[styles.shopName, { color: colors.foreground }]}>{profile?.shopName}</Text>
             <Text style={[styles.ownerName, { color: colors.mutedForeground }]}>{profile?.ownerName}</Text>
+            <Text style={[styles.editProfile, { color: colors.primary }]}>Editar perfil</Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </Pressable>
 
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Estrutura</Text>
         <MenuRow
@@ -305,8 +308,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 20 },
   profile: { borderWidth: 1, borderRadius: 19, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 30 },
   profileCopy: { flex: 1, gap: 4 },
+  profileImage: { width: 48, height: 48, borderRadius: 15 },
   shopName: { fontSize: 16, fontWeight: '700' },
   ownerName: { fontSize: 12 },
+  editProfile: { fontSize: 11, fontWeight: '700', marginTop: 2 },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
   accountTitle: { marginTop: 29 },
   menuRow: { minHeight: 70, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 13 },

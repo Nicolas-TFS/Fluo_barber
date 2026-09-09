@@ -25,6 +25,9 @@ export const GetBarberShopResponse = zod.object({
   "shopName": zod.string(),
   "ownerName": zod.string(),
   "phone": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "profileImage": zod.string(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
@@ -65,6 +68,9 @@ export const SaveBarberShopBody = zod.object({
   "shopName": zod.string(),
   "ownerName": zod.string(),
   "phone": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "profileImage": zod.string(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
@@ -101,6 +107,9 @@ export const SaveBarberShopResponse = zod.object({
   "shopName": zod.string(),
   "ownerName": zod.string(),
   "phone": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "profileImage": zod.string(),
   "openingTime": zod.string(),
   "closingTime": zod.string()
 }),
