@@ -10,6 +10,9 @@ export interface BarberProfile {
   shopName: string;
   ownerName: string;
   phone: string;
+  address: string;
+  city: string;
+  profileImage: string;
   openingTime: string;
   closingTime: string;
 }
