@@ -31,6 +31,8 @@ export default function AgendaScreen() {
   useFocusEffect(
     useCallback(() => {
       retrySync();
+      const interval = setInterval(retrySync, 15000);
+      return () => clearInterval(interval);
     }, [retrySync]),
   );
 
@@ -62,9 +64,14 @@ export default function AgendaScreen() {
           eyebrow="Agenda"
           title="Seu dia, no controle."
           trailing={
-            <Pressable accessibilityRole="button" onPress={() => router.push('/agenda/new')} style={[styles.add, { backgroundColor: colors.primary }]}>
-              <Feather name="plus" size={19} color={colors.primaryForeground} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Atualizar agenda" onPress={retrySync} style={[styles.refresh, { backgroundColor: colors.secondary }]}>
+                <Feather name="refresh-cw" size={17} color={colors.foreground} />
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Novo agendamento" onPress={() => router.push('/agenda/new')} style={[styles.add, { backgroundColor: colors.primary }]}>
+                <Feather name="plus" size={19} color={colors.primaryForeground} />
+              </Pressable>
+            </View>
           }
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
@@ -155,6 +162,8 @@ export default function AgendaScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 20 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refresh: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   add: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   dateRow: { gap: 10, paddingBottom: 28 },
   dayPill: { minWidth: 78, minHeight: 74, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 6 },

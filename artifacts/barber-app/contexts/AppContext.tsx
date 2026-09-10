@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import {
   completeBarberAppointment,
   createBarberAppointment,
@@ -175,6 +176,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [authLoaded, isSignedIn, syncAttempt, userId]);
 
   const retrySync = useCallback(() => setSyncAttempt((attempt) => attempt + 1), []);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') retrySync();
+    });
+    return () => subscription.remove();
+  }, [isSignedIn, retrySync]);
 
   const persistCache = async (next: StoreData) => {
     setData(next);
