@@ -186,6 +186,7 @@ async function buildShopData(clerkUserId: string): Promise<ShopData | null> {
 }
 
 router.get("/shop", requireAuth, async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   const data = await buildShopData(res.locals.clerkUserId);
   if (!data) {
     res.status(404).json({ error: "Barbershop not configured" });
