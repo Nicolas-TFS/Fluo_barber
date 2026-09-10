@@ -62,7 +62,7 @@ export default function SignInScreen() {
         setError(result.error.message || 'Não foi possível iniciar a recuperação.');
         return;
       }
-      const prepareResult = await signIn.prepareFirstFactor({ strategy: 'reset_password_email_code' });
+      const prepareResult = await signIn.resetPasswordEmailCode.sendCode();
       if (prepareResult.error) {
         setError(prepareResult.error.message || 'Não foi possível enviar o código.');
         return;
@@ -79,8 +79,7 @@ export default function SignInScreen() {
     setError('');
     setResetMessage('');
     try {
-      const result = await signIn.attemptFirstFactor({
-        strategy: 'reset_password_email_code',
+      const result = await signIn.resetPasswordEmailCode.verifyCode({
         code: resetCode.trim(),
       });
       if (result.error) {
@@ -102,7 +101,7 @@ export default function SignInScreen() {
       return;
     }
     try {
-      const result = await signIn.resetPassword({ password: newPassword });
+      const result = await signIn.resetPasswordEmailCode.submitPassword({ password: newPassword });
       if (result.error) {
         setError(result.error.message || 'Não foi possível salvar a nova senha.');
         return;
