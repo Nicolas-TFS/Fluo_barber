@@ -31,11 +31,11 @@ app.use(
 app.use(cors());
 app.use(express.json({ limit: "6mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(clerkMiddleware());
-
-app.get("/book/:shopId", (req, res) => {
+app.get(["/book/:shopId", "/api/book/:shopId"], (req, res) => {
   res.type("html").send(renderPublicBookingPage(req.params.shopId));
 });
+
+app.use(clerkMiddleware());
 
 app.use("/api", router);
 

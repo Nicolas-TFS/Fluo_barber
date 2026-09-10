@@ -47,7 +47,7 @@ export default function NewAppointmentScreen() {
   const [showAvailableTimes, setShowAvailableTimes] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const bookingUrl = profile?.bookingId && process.env.EXPO_PUBLIC_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/book/${profile.bookingId}`
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/book/${profile.bookingId}`
     : '';
 
   const selectedService = services.find((service) => service.id === serviceId);
