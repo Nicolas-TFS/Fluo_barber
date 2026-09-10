@@ -84,6 +84,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicBookingShop"
+        "400":
+          description: Invalid or past date
         "404":
           description: Barbershop not found
     post:
@@ -111,6 +113,10 @@ paths:
                 $ref: "#/components/schemas/BarberAppointment"
         "409":
           description: Time already booked
+        "400":
+          description: Invalid booking data or time outside business hours
+        "429":
+          description: Too many booking attempts
         "404":
           description: Barbershop not configured
   /appointments:
