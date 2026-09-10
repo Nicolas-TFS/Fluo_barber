@@ -36,7 +36,12 @@ export function renderPublicBookingPage(shopId: string) {
       .day.selected, .time.selected { background:var(--accent); border-color:var(--accent); color:#20150e; }
       .day small { display:block; font-size:10px; font-weight:700; text-transform:uppercase; opacity:.8; }
       .day strong { display:block; font-size:18px; margin-top:5px; }
-      .services { display:grid; gap:9px; }
+      .service-picker { display:flex; align-items:center; justify-content:space-between; width:100%; padding:14px; border:1px solid var(--line); border-radius:15px; color:var(--text); background:var(--card); text-align:left; }
+      .service-picker.open { border-color:var(--accent); }
+      .service-picker-copy { display:flex; align-items:center; gap:8px; }
+      .service-picker-name { font-weight:800; font-size:14px; }
+      .service-picker-meta { color:var(--muted); font-size:12px; margin-top:4px; }
+      .services { display:grid; gap:9px; margin-top:9px; }
       .service { width:100%; display:flex; align-items:center; justify-content:space-between; text-align:left; padding:14px; border:1px solid var(--line); border-radius:15px; color:var(--text); background:var(--card); }
       .service.selected { background:var(--accent-dark); border-color:var(--accent); }
       .service-name { font-weight:800; font-size:14px; }
@@ -69,6 +74,7 @@ export function renderPublicBookingPage(shopId: string) {
       let selectedDate = dateKey(today);
       let selectedService = "";
       let selectedTime = "";
+      let servicesOpen = false;
       let shop;
 
       function formatPrice(value) {
@@ -96,7 +102,11 @@ export function renderPublicBookingPage(shopId: string) {
             return '<button class="day ' + (key === selectedDate ? "selected" : "") + '" data-date="' + key + '"><small>' + (index === 0 ? "Hoje" : dateLabel(date)) + '</small><strong>' + date.getDate() + '</strong></button>';
           }).join("")}</div>
           <h2>Serviço</h2>
-          <div class="services">\${shop.services.map((item) => '<button class="service ' + (item.id === selectedService ? "selected" : "") + '" data-service="' + item.id + '"><span><span class="service-name">' + item.name + '</span><span class="service-meta">' + item.duration + ' min</span></span><span class="price">' + formatPrice(item.price) + '</span></button>').join("")}</div>
+          <button class="service-picker \${servicesOpen ? "open" : ""}" data-toggle-services>
+            <span class="service-picker-copy"><span>\${service ? '<span class="service-picker-name">' + service.name + '</span><span class="service-picker-meta">' + service.duration + ' min · ' + formatPrice(service.price) + '</span>' : '<span class="service-picker-name">Selecionar serviço</span><span class="service-picker-meta">Toque para ver os serviços</span>'}</span></span>
+            <span>\${servicesOpen ? "⌃" : "⌄"}</span>
+          </button>
+          \${servicesOpen ? '<div class="services">' + shop.services.map((item) => '<button class="service ' + (item.id === selectedService ? "selected" : "") + '" data-service="' + item.id + '"><span><span class="service-name">' + item.name + '</span><span class="service-meta">' + item.duration + ' min</span></span><span class="price">' + formatPrice(item.price) + '</span></button>').join("") + '</div>' : ""}
           <h2>Horário disponível</h2>
           <div class="times">\${shop.availableTimes.length ? shop.availableTimes.map((item) => '<button class="time ' + (item === selectedTime ? "selected" : "") + '" data-time="' + item + '">' + item + '</button>').join("") : '<div class="empty">Nenhum horário disponível nesta data.</div>'}</div>
           <label for="name">Seu nome</label><input id="name" placeholder="Nome completo" autocomplete="name">
@@ -105,7 +115,8 @@ export function renderPublicBookingPage(shopId: string) {
           <button class="submit" id="submit" disabled>Confirmar agendamento</button>
         \`;
         document.querySelectorAll("[data-date]").forEach((button) => button.onclick = () => { selectedDate = button.dataset.date; selectedTime = ""; load(); });
-        document.querySelectorAll("[data-service]").forEach((button) => button.onclick = () => { selectedService = button.dataset.service; render(); });
+        document.querySelectorAll("[data-toggle-services]").forEach((button) => button.onclick = () => { servicesOpen = !servicesOpen; render(); });
+        document.querySelectorAll("[data-service]").forEach((button) => button.onclick = () => { selectedService = button.dataset.service; servicesOpen = false; render(); });
         document.querySelectorAll("[data-time]").forEach((button) => button.onclick = () => { selectedTime = button.dataset.time; render(); });
         const name = document.getElementById("name");
         const phone = document.getElementById("phone");

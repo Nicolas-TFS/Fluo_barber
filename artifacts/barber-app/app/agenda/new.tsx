@@ -43,6 +43,7 @@ export default function NewAppointmentScreen() {
   const [saving, setSaving] = useState(false);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const [servicePickerOpen, setServicePickerOpen] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
   const [showAvailableTimes, setShowAvailableTimes] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -295,21 +296,41 @@ export default function NewAppointmentScreen() {
         ) : null}
         <Field label="Valor cobrado" value={amount} onChangeText={setAmount} placeholder="35" keyboardType="decimal-pad" colors={colors} />
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Serviço</Text>
-        <View style={styles.services}>
-          {services.filter((item) => item.active).map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => {
-                setServiceId(item.id);
-                if (!id) setAmount(String(item.price));
-              }}
-              style={[styles.service, { backgroundColor: serviceId === item.id ? colors.accent : colors.input, borderColor: serviceId === item.id ? colors.primary : colors.border }]}
-            >
-              <Text style={[styles.serviceName, { color: colors.foreground }]}>{item.name}</Text>
-              <Text style={[styles.serviceMeta, { color: colors.mutedForeground }]}>{item.duration} min · R$ {item.price.toFixed(2).replace('.', ',')}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Pressable
+          onPress={() => setServicePickerOpen((open) => !open)}
+          style={[styles.serviceSelector, { backgroundColor: colors.input, borderColor: servicePickerOpen ? colors.primary : colors.border }]}
+        >
+          <View style={styles.serviceSelectorInfo}>
+            <Feather name="scissors" size={17} color={colors.primary} />
+            <View style={styles.serviceSelectorText}>
+              <Text style={[styles.serviceSelectorTitle, { color: colors.foreground }]}>
+                {selectedService?.name || 'Selecionar serviço'}
+              </Text>
+              <Text style={[styles.serviceSelectorMeta, { color: colors.mutedForeground }]}>
+                {selectedService ? `${selectedService.duration} min · R$ ${selectedService.price.toFixed(2).replace('.', ',')}` : 'Toque para ver os serviços'}
+              </Text>
+            </View>
+          </View>
+          <Feather name={servicePickerOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+        </Pressable>
+        {servicePickerOpen ? (
+          <View style={styles.services}>
+            {services.filter((item) => item.active).map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => {
+                  setServiceId(item.id);
+                  if (!id) setAmount(String(item.price));
+                  setServicePickerOpen(false);
+                }}
+                style={[styles.service, { backgroundColor: serviceId === item.id ? colors.accent : colors.input, borderColor: serviceId === item.id ? colors.primary : colors.border }]}
+              >
+                <Text style={[styles.serviceName, { color: colors.foreground }]}>{item.name}</Text>
+                <Text style={[styles.serviceMeta, { color: colors.mutedForeground }]}>{item.duration} min · R$ {item.price.toFixed(2).replace('.', ',')}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         {existingAppointment?.status === 'completed' ? (
           <>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Forma de pagamento</Text>
@@ -426,6 +447,11 @@ const styles = StyleSheet.create({
   availableTimeText: { fontSize: 12, fontWeight: '700' },
   noAvailableTimes: { fontSize: 12 },
   services: { gap: 9, marginTop: -7, marginBottom: 8 },
+  serviceSelector: { minHeight: 62, borderWidth: 1, borderRadius: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -7 },
+  serviceSelectorInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  serviceSelectorText: { flex: 1, gap: 4 },
+  serviceSelectorTitle: { fontSize: 14, fontWeight: '700' },
+  serviceSelectorMeta: { fontSize: 11 },
   clientSelector: { minHeight: 62, borderWidth: 1, borderRadius: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -7 },
   clientSelectorInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
   clientSelectorText: { flex: 1, gap: 4 },
