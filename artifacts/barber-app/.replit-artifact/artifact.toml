@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/barber-app/"
+title = "BARBER APP"
+description = "A premium mobile management app for barbers and small barbershops, starting with onboarding, daily dashboard, scheduling navigation, and persistent local setup data."
+version = "1.0.0"
+id = "artifacts/barber-app"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/barber-app/" ]
+localPort = 23397
+
+[services.development]
+run = "pnpm --filter @workspace/barber-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/barber-app", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/barber-app", "run", "serve" ]
+
+[services.env]
+PORT = "23397"
+BASE_PATH = "/barber-app/"

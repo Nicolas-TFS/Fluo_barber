@@ -1,0 +1,586 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: barber-app
+    description: Shared Barber App data
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /shop:
+    get:
+      operationId: getBarberShop
+      tags: [barber-app]
+      summary: Load the authenticated barbershop
+      responses:
+        "200":
+          description: Barbershop data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopData"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: saveBarberShop
+      tags: [barber-app]
+      summary: Save the authenticated barbershop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveShopRequest"
+      responses:
+        "200":
+          description: Saved barbershop data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopData"
+        "400":
+          description: Invalid barbershop data
+        "401":
+          description: Unauthorized
+  /booking/{shopId}:
+    get:
+      operationId: getPublicBookingShop
+      tags: [barber-app]
+      summary: Load public booking information and availability
+      parameters:
+        - name: shopId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public booking information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBookingShop"
+        "400":
+          description: Invalid or past date
+        "404":
+          description: Barbershop not found
+    post:
+      operationId: createPublicBooking
+      tags: [barber-app]
+      summary: Create an appointment from the public booking page
+      parameters:
+        - name: shopId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicBookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "409":
+          description: Time already booked
+        "400":
+          description: Invalid booking data or time outside business hours
+        "429":
+          description: Too many booking attempts
+        "404":
+          description: Barbershop not configured
+  /appointments:
+    get:
+      operationId: getBarberAppointments
+      tags: [barber-app]
+      summary: List the authenticated barbershop appointments
+      responses:
+        "200":
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BarberAppointment"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createBarberAppointment
+      tags: [barber-app]
+      summary: Create an appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentRequest"
+      responses:
+        "201":
+          description: Created appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "400":
+          description: Invalid appointment data
+        "401":
+          description: Unauthorized
+  /appointments/{id}/complete:
+    post:
+      operationId: completeBarberAppointment
+      tags: [barber-app]
+      summary: Complete an appointment with its payment method
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteAppointmentRequest"
+      responses:
+        "200":
+          description: Completed appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Appointment not found
+  /appointments/{id}:
+    patch:
+      operationId: updateBarberAppointment
+      tags: [barber-app]
+      summary: Update an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentRequest"
+      responses:
+        "200":
+          description: Updated appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAppointment"
+        "400":
+          description: Invalid appointment data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Appointment not found
+        "409":
+          description: Time already booked
+  /services:
+    post:
+      operationId: createBarberService
+      tags: [barber-app]
+      summary: Add a service to the authenticated barbershop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+      responses:
+        "201":
+          description: Created service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberService"
+        "400":
+          description: Invalid service data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Barbershop not found
+  /clients:
+    post:
+      operationId: createBarberClient
+      tags: [barber-app]
+      summary: Add a client to the authenticated barbershop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "201":
+          description: Created client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberClient"
+        "400":
+          description: Invalid client data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Barbershop not found
+  /clients/{id}:
+    patch:
+      operationId: updateBarberClient
+      tags: [barber-app]
+      summary: Update a client from the authenticated barbershop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClientRequest"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberClient"
+        "400":
+          description: Invalid client data
+        "401":
+          description: Unauthorized
+        "404":
+          description: Client not found
+    delete:
+      operationId: deleteBarberClient
+      tags: [barber-app]
+      summary: Delete a client without deleting their appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteClientResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Client not found
+  /account:
+    delete:
+      operationId: deleteBarberAccount
+      tags: [barber-app]
+      summary: Permanently delete the authenticated barbershop and Clerk user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteAccountRequest"
+      responses:
+        "200":
+          description: Account deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAccountResponse"
+        "401":
+          description: Unauthorized
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    BarberProfile:
+      type: object
+      properties:
+        shopName:
+          type: string
+        ownerName:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        profileImage:
+          type: string
+        bookingId:
+          type: string
+        openingTime:
+          type: string
+        closingTime:
+          type: string
+      required: [shopName, ownerName, phone, address, city, profileImage, openingTime, closingTime]
+    BarberService:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: integer
+        active:
+          type: boolean
+      required: [id, name, duration, price, active]
+    BarberClient:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        createdAt:
+          type: string
+      required: [id, name, phone, createdAt]
+    PaymentMethod:
+      type: string
+      enum: [pix, cash, credit_card, debit_card]
+    BarberAppointment:
+      type: object
+      properties:
+        id:
+          type: string
+        clientId:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        completedAt:
+          type: string
+          nullable: true
+      required: [id, clientName, clientPhone, serviceId, amount, date, time, status]
+    ShopData:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BarberProfile"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        clients:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberClient"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberAppointment"
+      required: [profile, services, clients, appointments]
+    SaveShopRequest:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BarberProfile"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        clients:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberClient"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberAppointment"
+      required: [profile]
+    CreateAppointmentRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+      required: [clientName, clientPhone, serviceId, amount, date, time]
+    PublicBookingShop:
+      type: object
+      properties:
+        shopName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        profileImage:
+          type: string
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        availableTimes:
+          type: array
+          items:
+            type: string
+      required: [shopName, address, city, profileImage, services, availableTimes]
+    PublicBookingRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+      required: [clientName, clientPhone, serviceId, date, time]
+    CompleteAppointmentRequest:
+      type: object
+      properties:
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+      required: [paymentMethod]
+    UpdateAppointmentRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceId:
+          type: string
+        amount:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+    CreateServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: integer
+      required: [name, duration, price]
+    CreateClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+      required: [name, phone]
+    UpdateClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+      required: [name, phone]
+    DeleteClientResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    DeleteAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    DeleteAccountRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          enum: [EXCLUIR]
+      required: [confirmation]
+
